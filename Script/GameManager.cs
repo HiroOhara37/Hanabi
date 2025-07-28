@@ -128,7 +128,7 @@ public class GameManager : MonoBehaviourPun
             changedPosition = RoomManager.worldPositions[color] + new Vector3(0f, 0f, -1f - 0.01f * offsetNum);
         }
 
-        int seat = RoomManager.GetMySeat();
+        int seat = RoomManager.GetActorSeat(PhotonNetwork.LocalPlayer.ActorNumber);
         float rotationAngle = RoomManager.seatAngles[seat];
 
         Quaternion rotation = Quaternion.Euler(0f, 0f, rotationAngle);

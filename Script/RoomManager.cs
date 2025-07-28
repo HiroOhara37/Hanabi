@@ -69,13 +69,14 @@ public class RoomManager : MonoBehaviourPunCallbacks
     private const string SEAT_ACTIVE = "SEAT_ACTIVE"; // CSV: "1,1,0,0"   (seatIndex -> 1=有効席, 0=無効席)
 
     // ---- Player Property Keys ----
-    private const string GAME_SEAT = "GameSeat"; // 座席情報 int: 0..3 / -1 = 観戦者
+    //private const string GAME_SEAT = "GameSeat"; // 座席情報 int: 0..3 / -1 = 観戦者
 
     private void Start()
     {
         cardDistributeManager = FindAnyObjectByType<CardDistributeManager>();
     }
 
+    // ゲーム開始処理の呼び出し
     public void OnClickStartButton()
     {
         Debug.Log("OnClickStartButton called");
@@ -89,11 +90,12 @@ public class RoomManager : MonoBehaviourPunCallbacks
         }
     }
 
+    // ゲーム開始処理(マスタークライアントのみ実行)
     [PunRPC]
     public void StartButtonProcess()
     {
         Debug.Log("StartButtonProcess called");
-        // 入室順（PlayerListの順）でそのまま席を割り当て
+        // 入室順（PlayerListの順）でそのまま席を割り当て TODO* ランダムに
         var players = PhotonNetwork.PlayerList.ToList();
         int playerCount = Mathf.Min(players.Count, MaxSeats);
         int[] seatActors = Enumerable.Repeat(-1, MaxSeats).ToArray(); // 初期化: -1 = 空席
@@ -118,6 +120,25 @@ public class RoomManager : MonoBehaviourPunCallbacks
                 { SEAT_ACTORS, string.Join(",", seatActors) },
                 { SEAT_ACTIVE, string.Join(",", seatActive) }
             });
+    }
+
+    public override void OnRoomPropertiesUpdate(PhotonHashtable changedProp)
+    {
+        Debug.Log("OnRoomPropertiesUpdate called");
+        // 開始処理でのプロパティ変更ならカード生成処理
+        if (inStartButtonProceed) // マスタークライアントしかtrueになりえない
+        {
+            inStartButtonProceed = false;
+            CardDistributeManager.Instance.CalledOnClickStartButton();
+        }
+    }
+
+    // ルームプロパティが設定済みかどうか=ゲームが開始済みか
+    private bool HasSeatTable()
+    {
+        if (PhotonNetwork.CurrentRoom == null) return false;
+        var props = PhotonNetwork.CurrentRoom.CustomProperties;
+        return props.ContainsKey(SEAT_ACTORS) && props.ContainsKey(SEAT_ACTIVE);
     }
 
     [PunRPC]
@@ -167,38 +188,20 @@ public class RoomManager : MonoBehaviourPunCallbacks
         }
     }
 
+
     // =========================
     // 途中参加・途中離脱
     // =========================
-    private bool HasSeatTable()
-    {
-        if (PhotonNetwork.CurrentRoom == null) return false;
-        var props = PhotonNetwork.CurrentRoom.CustomProperties;
-        return props.ContainsKey(SEAT_ACTORS) && props.ContainsKey(SEAT_ACTIVE);
-    }
-
-    public override void OnJoinedRoom()
-    {
-        Debug.Log("OnJoinedRoom called");
-        // 開始済み（席テーブルあり）なら空いている有効席へ自動割当を試みる
-        if (HasSeatTable())
-        {
-            TryOccupySeatForSelfIfPossible();
-        }
-        ApplyMySeatState();
-    }
-
     // プレイヤーがルームを離れたときに呼ばれる
     public override void OnPlayerLeftRoom(Player otherPlayer)
     {
         Debug.Log($"OnPlayerLeftRoom called: {otherPlayer.NickName}");
-        // RoomSelectManagerのスロット情報を開放
+        // RoomSelectManager側のプロパティ:Slot情報を開放
         if (otherPlayer.CustomProperties.TryGetValue("PlayerSlot", out object slotObj))
         {
             string slot = slotObj.ToString();
             string roomName = PhotonNetwork.CurrentRoom.Name;
             string key = $"{roomName}_Slot{slot}";
-
             Debug.Log($"プレイヤー {otherPlayer.NickName} が退出。Slot{slot} を開放します。");
 
             // スロット情報を開放
@@ -212,8 +215,8 @@ public class RoomManager : MonoBehaviourPunCallbacks
         // ゲーム開始後（席テーブルがある）ならば、座席状態を更新する
         if (!HasSeatTable()) return;
 
-        int[] seatActors = ParseIntArray(SEAT_ACTORS, MaxSeats, -1);
         bool changed = false;
+        int[] seatActors = ParseIntArray(SEAT_ACTORS, MaxSeats, -1);
         // 退出したプレイヤーの座席を空席にする(観戦者なら何もしない)
         for (int i = 0; i < seatActors.Length; i++)
         {
@@ -233,82 +236,29 @@ public class RoomManager : MonoBehaviourPunCallbacks
         }
     }
 
-    public override void OnRoomPropertiesUpdate(PhotonHashtable changedProp)
+    // プレイヤーがルームに参加した時
+    public override void OnJoinedRoom()
     {
-        Debug.Log("OnRoomPropertiesUpdate called");
-        // 席テーブルが変わったら、自分の GameSeat を seatActors から決め直す
-        if (changedProp.ContainsKey(SEAT_ACTORS) || changedProp.ContainsKey(SEAT_ACTIVE))
+        Debug.Log("OnJoinedRoom called");
+        // 開始済み（席テーブルあり）なら空いている有効席へ自動割当を試みる
+        if (HasSeatTable())
         {
-            int[] seatActors = ParseIntArray(SEAT_ACTORS, MaxSeats, -1);
-            int myActor = PhotonNetwork.LocalPlayer.ActorNumber;
-
-            // 1) まず seatActors から自分の席を逆引き
-            int seat = -1;
-            for (int i = 0; i < seatActors.Length; i++)
-            {
-                if (seatActors[i] == myActor)
-                {
-                    seat = i;
-                    break;
-                }
-            }
-
-            // 2) 見つかったらそれを使う。見つからないなら空いてる有効席を探す（= TryOccupySeatForSelfIfPossible の簡易版）
-            if (seat >= 0)
-            {
-                SetMyGameSeat(seat);
-            }
-            else
-            {
-                TryOccupySeatForSelfIfPossible(); // 空き有効席があればここで座る
-            }
-
-            //ApplyMySeatState();
-            //if (inStartButtonProceed)
-            //{
-            //    cardManager.CalledOnClickStartButton();
-            //    inStartButtonProceed = false;
-            //}
+            TryOccupySeatForSelfIfPossible();
         }
+        ApplyMySeatState();
     }
 
-    public override void OnPlayerPropertiesUpdate(Player target, PhotonHashtable changedProps)
-    {
-        if (!target.IsLocal) return;  // 変更されたプレイヤープロパティが自分でなければスキップ
-        if (changedProps.ContainsKey(GAME_SEAT))
-        {
-            Debug.Log("[OnPlayerPropertiesUpdate] my GAME_SEAT changed -> ApplyMySeatState");
-            ApplyMySeatState();
-
-            // 生成処理をここで実行する
-            if (inStartButtonProceed)
-            {
-                inStartButtonProceed = false;
-                cardDistributeManager.CalledOnClickStartButton();
-            }
-        }
-    }
 
     // =========================
     // 自分の席/観戦状態反映
     // =========================
-    private void SetMyGameSeat(int seat)
+    public static int GetActorSeat(int actorNumber)
     {
-        Debug.Log($"SetMyGameSeat called: seat={seat}");
-        PhotonNetwork.LocalPlayer.SetCustomProperties(new PhotonHashtable
-            {
-                { GAME_SEAT, seat }
-            });
-    }
-
-    public static int GetMySeat()
-    {
-        int myActor = PhotonNetwork.LocalPlayer.ActorNumber;
         int[] seatActors = ParseIntArray("SEAT_ACTORS", MaxSeats, -1);
         int seat = -1;
         for (int i = 0; i < seatActors.Length; i++)
         {
-            if (seatActors[i] == myActor)
+            if (seatActors[i] == actorNumber)
             {
                 seat = i;
                 break;
@@ -318,33 +268,18 @@ public class RoomManager : MonoBehaviourPunCallbacks
         return seat;
     }
 
+    // 未割り当ての座席を調査し、新規参加者を割り当てる
     private void TryOccupySeatForSelfIfPossible()
     {
         Debug.Log("TryOccupySeatForSelfIfPossible called");
-        if (!HasSeatTable()) return;
-
+        int myActor = PhotonNetwork.LocalPlayer.ActorNumber;
+        int mySeat = GetActorSeat(myActor);
         // 既に席が割当済みなら不要
-        if (PhotonNetwork.LocalPlayer.CustomProperties.TryGetValue(GAME_SEAT, out object seatObj) &&
-            seatObj is int seatIndex && seatIndex >= 0)
-        {
-            return;
-        }
+        if (mySeat >= 0) return;
 
+        // 空いている有効席を探す
         int[] seatActors = ParseIntArray(SEAT_ACTORS, MaxSeats, -1);
         int[] seatActive = ParseIntArray(SEAT_ACTIVE, MaxSeats, 0);
-
-        int myActor = PhotonNetwork.LocalPlayer.ActorNumber;
-        // 1) すでに seatActors に自分が入っていれば、それを採用
-        for (int i = 0; i < MaxSeats; i++)
-        {
-            if (seatActors[i] == myActor)
-            {
-                SetMyGameSeat(i);
-                return;
-            }
-        }
-
-        // 2) 入っていなければ、空いている有効席を探す
         for (int i = 0; i < MaxSeats; i++)
         {
             if (seatActive[i] == 1 && seatActors[i] == -1)
@@ -354,13 +289,10 @@ public class RoomManager : MonoBehaviourPunCallbacks
                     {
                         { SEAT_ACTORS, string.Join(",", seatActors) }
                     });
-                SetMyGameSeat(i);
                 return;
             }
         }
-
-        // 3) どこにも入れなければ観戦
-        SetMyGameSeat(-1);
+        // なければ何もしない
     }
 
     // 「自分がプレイヤー席か観戦者か」を判定して、ローカル側の見た目／操作可否を切り替える
@@ -371,33 +303,21 @@ public class RoomManager : MonoBehaviourPunCallbacks
         if (!HasSeatTable())
         {
             Debug.Log("ApplyMySeatState: No SeatTable");
-            EnablePlayerInput(false); // 操作を受け付けない
             return;
         }
 
-        // 自分のGameSeatがまだ書き込まれていない
-        if (!PhotonNetwork.LocalPlayer.CustomProperties.TryGetValue(GAME_SEAT, out object seatObj))
-        {
-            Debug.Log("ApplyMySeatState: No GameSeat property");
-            SetMyGameSeat(-1);
-            EnablePlayerInput(false);
-            return;
-        }
-
-        int mySeat = (int)seatObj;
         // 観戦者として入室した場合=ゲーム開始後の入室
+        int mySeat = GetActorSeat(PhotonNetwork.LocalPlayer.ActorNumber);
         if (mySeat < 0)
         {
             Debug.Log("ApplyMySeatState: Spectator mode");
             // 観戦者
-            EnablePlayerInput(false);
             return;
         }
 
         float cameraAngle = seatAngles[Mathf.Clamp(mySeat, 0, seatAngles.Length - 1)];
         RotateMyCamera(cameraAngle);
         RotateCardPlace(cameraAngle);
-        EnablePlayerInput(true); // 操作を受け付ける
     }
 
     private void RotateMyCamera(float zAngle)
@@ -408,11 +328,6 @@ public class RoomManager : MonoBehaviourPunCallbacks
         var e = cam.transform.eulerAngles;
         e.z = zAngle;
         cam.transform.eulerAngles = e;
-    }
-
-    private void EnablePlayerInput(bool enable)
-    {
-        // TODO: 観戦者用の入力/UI無効化をここでまとめて制御
     }
 
     // Room.CustomProperties に文字列（例: "3,-1,-1,-1"）として入れてある配列風データを、

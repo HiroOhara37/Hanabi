@@ -7,6 +7,7 @@ using Photon.Realtime;
 
 public class CardDistributeManager : MonoBehaviourPunCallbacks
 {
+    public static CardDistributeManager Instance { get; private set; }
     [SerializeField] private Transform cardParent;  // カードを並べる親（空オブジェクトなど）
 
     public void CalledOnClickStartButton()
