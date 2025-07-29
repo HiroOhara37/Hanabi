@@ -10,6 +10,14 @@ public class CardDistributeManager : MonoBehaviourPunCallbacks
     public static CardDistributeManager Instance { get; private set; }
     [SerializeField] private Transform cardParent;  // カードを並べる親（空オブジェクトなど）
 
+    void Awake()
+    {
+        if (Instance == null)
+        {
+            Instance = this;
+        }
+    }
+
     public void CalledOnClickStartButton()
     {
         Debug.Log("CalledOnClickStartButton called");
