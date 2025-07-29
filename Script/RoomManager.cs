@@ -7,19 +7,24 @@ using System.Linq;
 using System.Collections;
 using TMPro;
 using System.Collections.Generic;
+using UnityEngine.EventSystems;
 
-public static class CardList
+public static  class CardList
 {
-    public static List<GameObject> deck = new List<GameObject>();
-    public static List<GameObject> discard = new List<GameObject>();
-    public static List<GameObject>[] seats = new List<GameObject>[]
-    {
-        new List<GameObject>(),
-        new List<GameObject>(),
-        new List<GameObject>(),
-        new List<GameObject>()
-    };
+    public static List<GameObject> deck;// = new List<GameObject>();
+    public static List<GameObject> discard;// = new List<GameObject>();
+    public static List<GameObject>[] seats;// = new List<GameObject>[RoomManager.MaxSeats];
 
+    static CardList()
+    {
+        deck = new List<GameObject>();
+        discard = new List<GameObject>();
+        seats = new List<GameObject>[RoomManager.MaxSeats];
+        for (int i = 0; i < RoomManager.MaxSeats; i++)
+        {
+            seats[i] = new List<GameObject>();
+        }
+    }
     public static void Clear()
     {
         foreach (var d in deck)
@@ -48,10 +53,10 @@ public class RoomManager : MonoBehaviourPunCallbacks
     private CardDistributeManager cardDistributeManager;
 
     private bool inStartButtonProceed = false;
-    public const int MaxSeats = 4; // 最大プレイヤー数
-    public static float[] seatAngles = { 0f, 180f, -90f, 90f };
-    public static Dictionary<string, Vector3> worldPositions = new Dictionary<string, Vector3>
-    {
+    public const int MaxSeats = 5; // 最大プレイヤー数
+    //public static float[] seatAngles = { 0f, 180f, -90f, 90f };
+    public static Dictionary<string, Vector3> worldPositions = new Dictionary<string, Vector3>();
+    /*{
         ["Blue"] = new Vector3(-15f, 15f, 0f),
         ["Green"] = new Vector3(0f, 15f, 0f),
         ["White"] = new Vector3(15f, 15f, 0f),
@@ -62,41 +67,82 @@ public class RoomManager : MonoBehaviourPunCallbacks
         ["ColorHint"] = new Vector3(-15f, -34f, -2f),
         ["Base"] = new Vector3(-18f, -40f, -1f),
         ["Offset"] = new Vector3(12f, 0f, 0f)
-    };
+    };*/
 
     // ---- Room Property Keys ----
-    private const string SEAT_ACTORS = "SEAT_ACTORS"; // CSV: "3,-1,-1,-1" (seatIndex -> actorNumber / -1 = empty)
-    private const string SEAT_ACTIVE = "SEAT_ACTIVE"; // CSV: "1,1,0,0"   (seatIndex -> 1=有効席, 0=無効席)
+    public static string SEAT_ACTORS = "SEAT_ACTORS"; // CSV: "3,-1,-1,-1" (seatIndex -> actorNumber / -1 = empty)
+    public static string SEAT_ACTIVE = "SEAT_ACTIVE"; // CSV: "1,1,0,0"   (seatIndex -> 1=有効席, 0=無効席)
+    public static string MODE = "MODE";
 
     // ---- Player Property Keys ----
     //private const string GAME_SEAT = "GameSeat"; // 座席情報 int: 0..3 / -1 = 観戦者
+    public GameObject modePanel;
 
     private void Start()
     {
         cardDistributeManager = FindAnyObjectByType<CardDistributeManager>();
+        // 置き場
+        worldPositions["Blue"] = GameObject.Find("置き場_Blue").transform.position;
+        worldPositions["Green"] = GameObject.Find("置き場_Green").transform.position;
+        worldPositions["White"] = GameObject.Find("置き場_White").transform.position;
+        worldPositions["Yellow"] = GameObject.Find("置き場_Yellow").transform.position;
+        worldPositions["Red"] = GameObject.Find("置き場_Red").transform.position;
+        worldPositions["Rainbow"] = GameObject.Find("置き場_Rainbow").transform.position;
+        worldPositions["Black"] = GameObject.Find("置き場_Black").transform.position;
+        worldPositions["Discard"] = GameObject.Find("捨て札").transform.position;
+        // 手札
+        worldPositions["Myself"] = GameObject.Find("HandArea_Myself").transform.position + new Vector3(-25f, 0f, -1f);
+        worldPositions["Other1"] = GameObject.Find("HandArea_Other_1").transform.position + new Vector3(-25f, 0f, -1f);
+        worldPositions["Other2"] = GameObject.Find("HandArea_Other_2").transform.position + new Vector3(-25f, 0f, -1f);
+        worldPositions["Other3"] = GameObject.Find("HandArea_Other_3").transform.position + new Vector3(-25f, 0f, -1f);
+        worldPositions["Other4"] = GameObject.Find("HandArea_Other_4").transform.position + new Vector3(-25f, 0f, -1f);
+        worldPositions["NumberHint"] = new Vector3(-1f, 6f, -1f); // カードの位置に対するヒントの差分位置
+        worldPositions["ColorHint"] = new Vector3(3f, 6f, -1f); // カードの位置に対するヒントの差分位置
+        worldPositions["Offset"] = new Vector3(12f, 0f, 0f); // カード1枚のoffset
+
+        modePanel = GameObject.Find("ModePanel");
+        modePanel.SetActive(false);
     }
 
     // ゲーム開始処理の呼び出し
     public void OnClickStartButton()
     {
         Debug.Log("OnClickStartButton called");
-        if (PhotonNetwork.IsMasterClient)
+        modePanel.SetActive(true);
+        /*if (PhotonNetwork.IsMasterClient)
         {
             StartButtonProcess(); // 直呼び
         }
         else
         {
             photonView.RPC(nameof(StartButtonProcess), RpcTarget.MasterClient);
+        }*/
+    }
+
+    public void OnClickModeButton()
+    {
+        modePanel.SetActive(false);
+        // 押したボタンを取得
+        GameObject clickedButton = EventSystem.current.currentSelectedGameObject;
+        string modeName = clickedButton.name.Split("_")[1];
+        Debug.Log($"modeName:{modeName}");
+        if (PhotonNetwork.IsMasterClient)
+        {
+            StartButtonProcess(modeName); // 直呼び
+        }
+        else
+        {
+            photonView.RPC(nameof(StartButtonProcess), RpcTarget.MasterClient, modeName);
         }
     }
 
     // ゲーム開始処理(マスタークライアントのみ実行)
     [PunRPC]
-    public void StartButtonProcess()
+    public void StartButtonProcess(string modeName)
     {
-        Debug.Log("StartButtonProcess called");
-        // 入室順（PlayerListの順）でそのまま席を割り当て TODO* ランダムに
-        var players = PhotonNetwork.PlayerList.ToList();
+        Debug.Log($"StartButtonProcess called. modeName:{modeName}");
+        // プレイヤー順を決定
+        var players = PhotonNetwork.PlayerList.OrderBy(_ => UnityEngine.Random.Range(0, 10000)).ToList();
         int playerCount = Mathf.Min(players.Count, MaxSeats);
         int[] seatActors = Enumerable.Repeat(-1, MaxSeats).ToArray(); // 初期化: -1 = 空席
         int[] seatActive = Enumerable.Repeat(0, MaxSeats).ToArray(); // 初期化: 0 = 無効席
@@ -110,15 +156,16 @@ public class RoomManager : MonoBehaviourPunCallbacks
         }
 
         // 名前設定
-        var playerNames = players.Select(p => p.NickName).ToArray();
-        photonView.RPC(nameof(SetNameHolder), RpcTarget.AllBuffered, (object)playerNames);
+        //var playerNames = players.Select(p => p.NickName).ToArray();
+        //photonView.RPC(nameof(SetNameHolder), RpcTarget.AllBuffered, (object)playerNames);
 
         inStartButtonProceed = true;
         // ルームプロパティ更新 → OnRoomPropertiesUpdateが呼ばれる
         PhotonNetwork.CurrentRoom.SetCustomProperties(new PhotonHashtable
             {
                 { SEAT_ACTORS, string.Join(",", seatActors) },
-                { SEAT_ACTIVE, string.Join(",", seatActive) }
+                { SEAT_ACTIVE, string.Join(",", seatActive) },
+                { MODE, modeName }
             });
     }
 
@@ -254,7 +301,7 @@ public class RoomManager : MonoBehaviourPunCallbacks
     // =========================
     public static int GetActorSeat(int actorNumber)
     {
-        int[] seatActors = ParseIntArray("SEAT_ACTORS", MaxSeats, -1);
+        int[] seatActors = ParseIntArray(SEAT_ACTORS, MaxSeats, -1);
         int seat = -1;
         for (int i = 0; i < seatActors.Length; i++)
         {
@@ -315,9 +362,9 @@ public class RoomManager : MonoBehaviourPunCallbacks
             return;
         }
 
-        float cameraAngle = seatAngles[Mathf.Clamp(mySeat, 0, seatAngles.Length - 1)];
-        RotateMyCamera(cameraAngle);
-        RotateCardPlace(cameraAngle);
+        //float cameraAngle = seatAngles[Mathf.Clamp(mySeat, 0, seatAngles.Length - 1)];
+        //RotateMyCamera(cameraAngle);
+        //RotateCardPlace(cameraAngle);
     }
 
     private void RotateMyCamera(float zAngle)

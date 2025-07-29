@@ -7,7 +7,6 @@ public class NameInputWatcher : MonoBehaviour
     private TMP_InputField input;
     private string roomName;
 
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
         roomSelectManager = FindFirstObjectByType<RoomSelectManager>();
