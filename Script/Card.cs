@@ -60,9 +60,7 @@ public class Card : MonoBehaviourPun, IPointerClickHandler
     {
         get
         {
-            if (!PhotonNetwork.LocalPlayer.CustomProperties.TryGetValue("GameSeat", out object seatObj))
-                return false; // まだ決まっていない / 観戦など
-            int mySeat = (int)seatObj;
+            int mySeat = RoomManager.GetActorSeat(PhotonNetwork.LocalPlayer.ActorNumber);
             return mySeat >= 0 && mySeat == ownerId;
         }
     }
@@ -70,6 +68,7 @@ public class Card : MonoBehaviourPun, IPointerClickHandler
     // 左クリック判定
     public void OnPointerClick(PointerEventData eventData)
     {
+        if (RoomManager.GetActorSeat(PhotonNetwork.LocalPlayer.ActorNumber) < 0) return; // 観戦は押せない
         if (eventData.button == PointerEventData.InputButton.Left)
         {
             CardSelectManager.Instance?.Select(this);
@@ -111,6 +110,11 @@ public class Card : MonoBehaviourPun, IPointerClickHandler
             if (hint != null) Destroy(hint);
         }
         hintChips.Clear();
+    }
+
+    private void OnDestroy()
+    {
+        ClearHints();
     }
 
     public void ShowFront()

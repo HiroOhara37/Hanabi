@@ -1,5 +1,5 @@
 using UnityEngine;
-using UnityEngine.InputSystem;  // 新しいInputSystemを使用
+using UnityEngine.InputSystem;
 
 public class CameraController2D : MonoBehaviour
 {
