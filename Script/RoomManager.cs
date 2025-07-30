@@ -74,8 +74,8 @@ public class RoomManager : MonoBehaviourPunCallbacks
         worldPositions["Red"] = GameObject.Find("置き場_Red").transform.position;
         worldPositions["Rainbow"] = GameObject.Find("置き場_Rainbow").transform.position;
         worldPositions["Black"] = GameObject.Find("置き場_Black").transform.position;
-        worldPositions["Discard"] = GameObject.Find("捨て札").transform.position;
-        worldPositions["Deck"] = GameObject.Find("山札").transform.position;
+        worldPositions["Discard"] = GameObject.Find("捨て札").transform.position + new Vector3(0f, 0f, -1f);
+        worldPositions["Deck"] = GameObject.Find("山札").transform.position + new Vector3(0f, 0f, -1f);
         // 手札
         worldPositions["Myself"] = GameObject.Find("HandArea_Myself").transform.position + new Vector3(-25f, 0f, -1f);
         worldPositions["Other1"] = GameObject.Find("HandArea_Other_1").transform.position + new Vector3(-25f, 0f, -1f);
