@@ -17,6 +17,7 @@ public class GameManager : MonoBehaviourPun
 
     public static int hintCount; // ヒントの残数
     private int errorCount; // 失敗数
+    public float moveSpeed = 0.5f;
     // 色
     private Dictionary<string, Color> myColors = new Dictionary<string, Color>()
     {
@@ -29,7 +30,6 @@ public class GameManager : MonoBehaviourPun
     // 手札のポジション
     public static Dictionary<int, Vector3> basePositions = new Dictionary<int, Vector3>();
 
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
         Init();
@@ -87,15 +87,14 @@ public class GameManager : MonoBehaviourPun
     public void OnClickDiscardButton()
     {
         Debug.Log("OnClickDiscardButton called");
-        discardCount += 1;
         var (cardIndex, ownerId, indexInOwner) = CardSelectManager.Instance?.CalledPlayOrDiscard() ?? (-1, -1, -1);
         Debug.Assert(cardIndex != -1, "選択対象がnullでした。");
-        photonView.RPC("DiscardRPC", RpcTarget.AllBuffered, cardIndex, ownerId, indexInOwner, discardCount);
+        photonView.RPC("DiscardRPC", RpcTarget.AllBuffered, cardIndex, ownerId, indexInOwner);
     }
 
     // 全員の画面でカードを捨て札に
     [PunRPC]
-    public void DiscardRPC(int cardIndex, int ownerId, int indexInOwner, int discardCount)
+    public void DiscardRPC(int cardIndex, int ownerId, int indexInOwner)
     {
         Debug.Log($"DiscardRPC called cardIndex:{cardIndex}, ownerId:{ownerId}, indexInOwner:{indexInOwner}");
         StartCoroutine(PlayOrDiscardSequence(cardIndex, ownerId, indexInOwner));
@@ -120,7 +119,8 @@ public class GameManager : MonoBehaviourPun
         if (color == "")
         {
             //捨て札の位置を取得
-            changedPosition = RoomManager.worldPositions["Discard"] + new Vector3(0f, 0f, -1f - 0.01f * discardCount);
+            changedPosition = RoomManager.worldPositions["Discard"] + RoomManager.worldPositions["DiscardOffset"] * discardCount;
+            discardCount++;
         }
         else
         {
@@ -130,13 +130,8 @@ public class GameManager : MonoBehaviourPun
             changedPosition = RoomManager.worldPositions[color] + new Vector3(0f, 0f, -1f - 0.01f * offsetNum);
         }
 
-        //int seat = RoomManager.GetActorSeat(PhotonNetwork.LocalPlayer.ActorNumber);
-        //float rotationAngle = RoomManager.seatAngles[seat];
+        cardObject.transform.DOMove(changedPosition, moveSpeed);
 
-        //Quaternion rotation = Quaternion.Euler(0f, 0f, rotationAngle);
-        //Vector3 seatChangedPosition = rotation * changedPosition;
-        cardObject.transform.position = changedPosition;  // 新しい位置に移動
-        //cardObject.transform.SetPositionAndRotation(seatChangedPosition, rotation); // 新しい位置に移動
         // 選択カードのステータスを更新
         card.SetOwnerId(CardOwner.Discard); // これで所有者にも表が向く
         card.indexInOwner = discardCount; // 捨て札の最新indexにする
@@ -168,15 +163,11 @@ public class GameManager : MonoBehaviourPun
         card.SetOwnerId(ownerId);
         card.indexInOwner = CardList.seats[ownerId].Count;
 
-        //Vector3 basePosition = RoomManager.worldPositions["Base"];
         Vector3 basePosition = basePositions[ownerId];
         Vector3 offset = RoomManager.worldPositions["Offset"];
         Vector3 addPosition = basePosition + offset * card.indexInOwner;
-        //float rotationAngle = RoomManager.seatAngles[ownerId];
-        //Quaternion rotation = Quaternion.Euler(0f, 0f, rotationAngle);
-        //Vector3 seatPosition = rotation * localPosition;
-        cardObject.transform.position = addPosition;
-        //cardObject.transform.SetPositionAndRotation(seatPosition, rotation);
+
+        cardObject.transform.DOMove(addPosition, moveSpeed);
     }
 
     public void OnClickNumberHintButton()
@@ -221,19 +212,14 @@ public class GameManager : MonoBehaviourPun
         hintCount -= 1;
         // ヒントチップの設定
         GameObject hintChipPrefab = Resources.Load<GameObject>("Prefab/HintChip");
-        //float rotationAngle = RoomManager.seatAngles[ownerId];
-        //Quaternion rotation = Quaternion.Euler(0f, 0f, rotationAngle);
-
         Vector3 basePosition;
         Vector3 offset = RoomManager.worldPositions["Offset"];
         if (number == "")
         {
-            //basePosition = RoomManager.worldPositions["ColorHint"];
             basePosition = basePositions[ownerId] + RoomManager.worldPositions["ColorHint"];
         }
         else
         {
-            //basePosition = RoomManager.worldPositions["NumberHint"];
             basePosition = basePositions[ownerId] + RoomManager.worldPositions["NumberHint"];
         }
 
@@ -242,7 +228,6 @@ public class GameManager : MonoBehaviourPun
         {
             if (!hintTarget[i]) continue;
             Vector3 setPosition = basePosition + offset * i;
-            //Vector3 worldPosition = rotation * seatPosition;
 
             GameObject newHintChip = Instantiate(hintChipPrefab);
             // SpriteRendererのカラー設定
@@ -252,7 +237,6 @@ public class GameManager : MonoBehaviourPun
             var textMesh = newHintChip.GetComponentInChildren<TextMeshPro>();
             textMesh.text = number;
             // 位置を設定
-            //newHintChip.transform.SetPositionAndRotation(worldPosition, rotation);
             newHintChip.transform.position = setPosition;
 
             // カードクラスに持たせる
@@ -286,8 +270,6 @@ public class GameManager : MonoBehaviourPun
     {
         Debug.Log($"SetCardsNewPositon called. ownerId:{ownerId}");
         Vector3 offset = RoomManager.worldPositions["Offset"];
-        //float rotationAngle = RoomManager.seatAngles[ownerId];
-        //Quaternion rotation = Quaternion.Euler(0f, 0f, rotationAngle);
 
         for (int i = 0; i < cardList.Count; i++)
         {
@@ -296,20 +278,18 @@ public class GameManager : MonoBehaviourPun
             int beforeIndexInOwner = card.indexInOwner;
             // 差分を求める
             int diff = i - card.indexInOwner;
-            Debug.Assert(diff < 0, $"diffが{diff}で異常値です。");
+            Debug.Assert(diff <= 0, $"diffが{diff}で異常値です。");
             // 差分だけoffsetを移動する
             Vector3 currentPos = cardObject.transform.position;
             Vector3 thisCardOffset = offset * diff;
-            //cardObject.transform.position = currentPos + seatOffset;
-            cardObject.transform.DOMove(currentPos + thisCardOffset, 0.5f);
+            cardObject.transform.DOMove(currentPos + thisCardOffset, moveSpeed);
             card.indexInOwner = i;
 
             // ヒントも移動
             foreach (GameObject hintObj in card.hintChips)
             {
                 Vector3 currentHintPos = hintObj.transform.position;
-                //hintObj.transform.position = currentHintPos + seatOffset;
-                hintObj.transform.DOMove(currentHintPos + thisCardOffset, 0.5f);
+                hintObj.transform.DOMove(currentHintPos + thisCardOffset, moveSpeed);
             }
         }
     }

@@ -13,7 +13,7 @@ using System.Linq;
 
 public class RoomSelectManager : MonoBehaviourPunCallbacks
 {
-    private const int MaxPlayersPerRoom = 4;
+    private const int MaxPlayersPerRoom = 5;
     private Dictionary<string, RoomInfo> cachedRoomList = new Dictionary<string, RoomInfo>();
 
     void Start()
@@ -99,7 +99,7 @@ public class RoomSelectManager : MonoBehaviourPunCallbacks
         {
             usedSlots = GetSlotDictionary(roomName, info.CustomProperties);
             // 人数表示
-            countText.text = $"参加人数：{info.PlayerCount}/{info.MaxPlayers}";
+            countText.text = $"参加人数：{info.PlayerCount}/{MaxPlayersPerRoom}";
         }
         else
         {

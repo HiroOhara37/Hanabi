@@ -11,9 +11,9 @@ using UnityEngine.EventSystems;
 
 public static  class CardList
 {
-    public static List<GameObject> deck;// = new List<GameObject>();
-    public static List<GameObject> discard;// = new List<GameObject>();
-    public static List<GameObject>[] seats;// = new List<GameObject>[RoomManager.MaxSeats];
+    public static List<GameObject> deck;
+    public static List<GameObject> discard;
+    public static List<GameObject>[] seats;
 
     static CardList()
     {
@@ -54,29 +54,14 @@ public class RoomManager : MonoBehaviourPunCallbacks
 
     private bool inStartButtonProceed = false;
     public const int MaxSeats = 5; // 最大プレイヤー数
-    //public static float[] seatAngles = { 0f, 180f, -90f, 90f };
     public static Dictionary<string, Vector3> worldPositions = new Dictionary<string, Vector3>();
-    /*{
-        ["Blue"] = new Vector3(-15f, 15f, 0f),
-        ["Green"] = new Vector3(0f, 15f, 0f),
-        ["White"] = new Vector3(15f, 15f, 0f),
-        ["Yellow"] = new Vector3(-15f, -15f, 0f),
-        ["Red"] = new Vector3(15f, -15f, 0f),
-        ["Discard"] = new Vector3(0f, -15f, 0f),
-        ["NumberHint"] = new Vector3(-19f, -34f, -2f),
-        ["ColorHint"] = new Vector3(-15f, -34f, -2f),
-        ["Base"] = new Vector3(-18f, -40f, -1f),
-        ["Offset"] = new Vector3(12f, 0f, 0f)
-    };*/
+    public GameObject modePanel;
+    public bool isModePanelOpen = false;
 
     // ---- Room Property Keys ----
     public static string SEAT_ACTORS = "SEAT_ACTORS"; // CSV: "3,-1,-1,-1" (seatIndex -> actorNumber / -1 = empty)
     public static string SEAT_ACTIVE = "SEAT_ACTIVE"; // CSV: "1,1,0,0"   (seatIndex -> 1=有効席, 0=無効席)
     public static string MODE = "MODE";
-
-    // ---- Player Property Keys ----
-    //private const string GAME_SEAT = "GameSeat"; // 座席情報 int: 0..3 / -1 = 観戦者
-    public GameObject modePanel;
 
     private void Start()
     {
@@ -90,6 +75,7 @@ public class RoomManager : MonoBehaviourPunCallbacks
         worldPositions["Rainbow"] = GameObject.Find("置き場_Rainbow").transform.position;
         worldPositions["Black"] = GameObject.Find("置き場_Black").transform.position;
         worldPositions["Discard"] = GameObject.Find("捨て札").transform.position;
+        worldPositions["Deck"] = GameObject.Find("山札").transform.position;
         // 手札
         worldPositions["Myself"] = GameObject.Find("HandArea_Myself").transform.position + new Vector3(-25f, 0f, -1f);
         worldPositions["Other1"] = GameObject.Find("HandArea_Other_1").transform.position + new Vector3(-25f, 0f, -1f);
@@ -99,29 +85,35 @@ public class RoomManager : MonoBehaviourPunCallbacks
         worldPositions["NumberHint"] = new Vector3(-1f, 6f, -1f); // カードの位置に対するヒントの差分位置
         worldPositions["ColorHint"] = new Vector3(3f, 6f, -1f); // カードの位置に対するヒントの差分位置
         worldPositions["Offset"] = new Vector3(12f, 0f, 0f); // カード1枚のoffset
+        worldPositions["DiscardOffset"] = new Vector3(3f, 0f, -0.01f);
 
         modePanel = GameObject.Find("ModePanel");
         modePanel.SetActive(false);
+        isModePanelOpen = false;
     }
 
-    // ゲーム開始処理の呼び出し
+    // 開始ボタン押下 -> モード選択パネル起動(またはクローズ)
     public void OnClickStartButton()
     {
         Debug.Log("OnClickStartButton called");
-        modePanel.SetActive(true);
-        /*if (PhotonNetwork.IsMasterClient)
+        if (isModePanelOpen)
         {
-            StartButtonProcess(); // 直呼び
+            modePanel.SetActive(false);
+            isModePanelOpen = false;
         }
         else
         {
-            photonView.RPC(nameof(StartButtonProcess), RpcTarget.MasterClient);
-        }*/
+            modePanel.SetActive(true);
+            isModePanelOpen = true;            
+        }
     }
 
+    // ゲーム開始処理スタート
     public void OnClickModeButton()
     {
         modePanel.SetActive(false);
+        isModePanelOpen = false;
+
         // 押したボタンを取得
         GameObject clickedButton = EventSystem.current.currentSelectedGameObject;
         string modeName = clickedButton.name.Split("_")[1];
@@ -154,10 +146,6 @@ public class RoomManager : MonoBehaviourPunCallbacks
             seatActive[seat] = 1; // 有効席に設定
             Debug.Log($"Seat {seat} assigned to Player {p.NickName} (Actor: {p.ActorNumber})");
         }
-
-        // 名前設定
-        //var playerNames = players.Select(p => p.NickName).ToArray();
-        //photonView.RPC(nameof(SetNameHolder), RpcTarget.AllBuffered, (object)playerNames);
 
         inStartButtonProceed = true;
         // ルームプロパティ更新 → OnRoomPropertiesUpdateが呼ばれる
@@ -202,36 +190,6 @@ public class RoomManager : MonoBehaviourPunCallbacks
             {
                 nameText.text = $"Player{i}：なし";
             }
-        }
-    }
-
-    private void RotateCardPlace(float rotationAngle)
-    {
-        Debug.Log("RotateCardPlace called");
-        // 中央のアイテムを回転させる処理
-        // リストにする
-        var cardPlaces = new[]
-        {
-                GameObject.Find("置き場_Red"),
-                GameObject.Find("置き場_Blue"),
-                GameObject.Find("置き場_Green"),
-                GameObject.Find("置き場_Yellow"),
-                GameObject.Find("置き場_White"),
-                GameObject.Find("捨て札")
-            };
-
-        // 座席によって、各置き場の回転角度を設定
-        Quaternion rotation = Quaternion.Euler(0f, 0f, rotationAngle);
-        // 各置き場のpositionを取得
-        foreach (var place in cardPlaces)
-        {
-            if (place == null)
-            {
-                Debug.LogWarning("Card place not found: " + place.name);
-            }
-            Vector3 pos = place.transform.position;
-            Vector3 newPos = rotation * pos;
-            place.transform.SetPositionAndRotation(newPos, rotation);
         }
     }
 
@@ -292,7 +250,6 @@ public class RoomManager : MonoBehaviourPunCallbacks
         {
             TryOccupySeatForSelfIfPossible();
         }
-        ApplyMySeatState();
     }
 
 
@@ -340,41 +297,6 @@ public class RoomManager : MonoBehaviourPunCallbacks
             }
         }
         // なければ何もしない
-    }
-
-    // 「自分がプレイヤー席か観戦者か」を判定して、ローカル側の見た目／操作可否を切り替える
-    private void ApplyMySeatState()
-    {
-        Debug.Log("ApplyMySeatState called");
-        // ゲームが開始されていない状態
-        if (!HasSeatTable())
-        {
-            Debug.Log("ApplyMySeatState: No SeatTable");
-            return;
-        }
-
-        // 観戦者として入室した場合=ゲーム開始後の入室
-        int mySeat = GetActorSeat(PhotonNetwork.LocalPlayer.ActorNumber);
-        if (mySeat < 0)
-        {
-            Debug.Log("ApplyMySeatState: Spectator mode");
-            // 観戦者
-            return;
-        }
-
-        //float cameraAngle = seatAngles[Mathf.Clamp(mySeat, 0, seatAngles.Length - 1)];
-        //RotateMyCamera(cameraAngle);
-        //RotateCardPlace(cameraAngle);
-    }
-
-    private void RotateMyCamera(float zAngle)
-    {
-        Debug.Log($"RotateMyCamera called: zAngle={zAngle}");
-        var cam = Camera.main;
-        if (cam == null) return;
-        var e = cam.transform.eulerAngles;
-        e.z = zAngle;
-        cam.transform.eulerAngles = e;
     }
 
     // Room.CustomProperties に文字列（例: "3,-1,-1,-1"）として入れてある配列風データを、

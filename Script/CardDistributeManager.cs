@@ -64,7 +64,7 @@ public class CardDistributeManager : MonoBehaviourPunCallbacks
             string cardNumber = parts[1][0].ToString();
 
             // カード生成
-            Vector3 pos = new Vector3(0, 0, -0.02f * i + 2f);  // 今後変更の可能性あり
+            Vector3 pos = RoomManager.worldPositions["Deck"] + new Vector3(0, 0, -0.02f * i - 1f);
             GameObject cardPrefab = Resources.Load<GameObject>("Prefab/Card");
             GameObject card = Instantiate(cardPrefab, pos, Quaternion.identity);
             card.name = $"Card_{shuffledImageNames[i]}";
@@ -80,7 +80,6 @@ public class CardDistributeManager : MonoBehaviourPunCallbacks
     {
         Debug.Log("FirstSetupCards called");
         SetHandleAreas();
-        //var room = PhotonNetwork.CurrentRoom;
         int[] seatActive = RoomManager.ParseIntArray(RoomManager.SEAT_ACTIVE, RoomManager.MaxSeats, -1);
         List<int> activeSeatIdx = Enumerable.Range(0, seatActive.Length).Where(i => seatActive[i] == 1).ToList();
         int cardsPerPlayer = (activeSeatIdx.Count == 4) ? 4 : 5;  // 2, 3人は5枚、4人は4枚
@@ -95,10 +94,7 @@ public class CardDistributeManager : MonoBehaviourPunCallbacks
 
             // 各カードをプレイヤーの手札に配置
             Vector3 basePosition = GameManager.basePositions[seat];
-            //Vector3 basePosition = new Vector3(-18f, -40f, -1f);  // 配置の基準位置
             Vector3 offset = RoomManager.worldPositions["Offset"]; // 2枚目以降、どれだけずらすか
-            //float rotationAngle = RoomManager.seatAngles[seat]; // プレイヤーごとの回転角度を取得
-            //Quaternion rotation = Quaternion.Euler(0f, 0f, rotationAngle);
             for (int j = 0; j < playerCards.Count; j++)
             {
                 var gameObject = playerCards[j];
@@ -106,13 +102,8 @@ public class CardDistributeManager : MonoBehaviourPunCallbacks
                 card.SetOwnerId(seat); // カードの所有者座席を設定
                 card.indexInOwner = j; // 所有者内でのインデックスを設定
                 CardList.seats[seat].Add(gameObject);
-                //gameObject.transform.SetParent(parent, true); // 親オブジェクトを設定
-
-                // 原点(0,0,0)中心に回転させた位置を計算
-                gameObject.transform.position = basePosition + offset * j;
-                //Vector3 localPosition = basePosition + offset * j;
-                //Vector3 worldPosition = rotation * localPosition;
-                //gameObject.transform.SetPositionAndRotation(worldPosition, rotation);
+        
+                gameObject.transform.position = basePosition + offset * j;  // 初期手札移動はアニメーションにしない
             }
         }
     }
@@ -134,7 +125,6 @@ public class CardDistributeManager : MonoBehaviourPunCallbacks
             {
                 TextMeshPro nameText = GameObject.Find($"Myself_NameHolder").GetComponent<TextMeshPro>();
                 nameText.text = $"Player{i + 1}：{player.NickName}";
-                //positions.Add(RoomManager.worldPositions["Myself"]);
                 GameManager.basePositions[i] = RoomManager.worldPositions["Myself"];
             }
             else
@@ -148,7 +138,6 @@ public class CardDistributeManager : MonoBehaviourPunCallbacks
                 else
                 {
                     nameText.text = $"Player{i + 1}：{player.NickName}";
-                    //positions.Add(RoomManager.worldPositions[$"Other{otherIndex}"]);
                     GameManager.basePositions[i] = RoomManager.worldPositions[$"Other{otherIndex}"];
                 }
                 otherIndex++;
