@@ -60,8 +60,16 @@ public class CardSelectManager : MonoBehaviour
                 discardButton.interactable = false;
                 if (GameManager.hintCount > 0)
                 {
+                    // 虹色と黒色に色のヒントは出せない
+                    if (card.cardColor == "Rainbow" || card.cardColor == "Black")
+                    {
+                        colorHintButton.interactable = false;
+                    }
+                    else
+                    {                    
+                        colorHintButton.interactable = true;
+                    }
                     numberHintButton.interactable = true;
-                    colorHintButton.interactable = true;
                 }
                 else
                 {

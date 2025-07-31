@@ -49,7 +49,9 @@ public class GameManager : MonoBehaviourPun
             {"Green", 0},
             {"White", 0},
             {"Blue", 0},
-            {"Yellow", 0}
+            {"Yellow", 0},
+            {"Rainbow", 0},
+            {"Black", 6}
         };
         discardCount = 0;
         hintCount = 8;
@@ -199,8 +201,15 @@ public class GameManager : MonoBehaviourPun
         {
             Card card = cardObj.GetComponent<Card>();
             string ithCardColor = card.cardColor;
-            // 選択したカードの色と同じならtrue、異なるならfalseを入れる
-            hintTarget.Add(ithCardColor == cardColor);
+            // 選択したカードの色と同じかRainbowならtrue、異なるならfalseを入れる
+            if (ithCardColor == cardColor || ithCardColor == "Rainbow")
+            {
+                hintTarget.Add(true);
+            }
+            else
+            {
+                hintTarget.Add(false);
+            }
         }
         photonView.RPC("SetHintChip", RpcTarget.AllBuffered, hintTarget.ToArray(), ownerId, cardColor, "");
     }
@@ -256,11 +265,26 @@ public class GameManager : MonoBehaviourPun
         string cardColor = card.cardColor;
         int correctNumber = state[cardColor];
 
-        bool isCorrected = cardNumber == correctNumber + 1;
-        if (isCorrected && cardNumber == 5)
+        bool isCorrected = false;
+        if (cardColor != "Black")
         {
-            // cardNumberが5だったら、ヒントカードを1つ増やす
-            hintCount = Math.Min(hintCount + 1, 8);
+            // 黒色以外は昇順で5がクリア
+            isCorrected = cardNumber == correctNumber + 1;
+            if (isCorrected && cardNumber == 5)
+            {
+                // cardNumberが5だったら、ヒントカードを1つ増やす
+                hintCount = Math.Min(hintCount + 1, 8);
+            }
+        }
+        else
+        {
+            // 黒色は降順で1がクリア
+            isCorrected = cardNumber == correctNumber - 1;
+            if (isCorrected && cardNumber == 1)
+            {
+                // cardNumberが1だったら、ヒントカードを1つ増やす
+                hintCount = Math.Min(hintCount + 1, 8);
+            }
         }
 
         return isCorrected;

@@ -11,13 +11,16 @@ public class CardDistributeManager : MonoBehaviourPunCallbacks
 {
     public static CardDistributeManager Instance { get; private set; }
     [SerializeField] private Transform cardParent;  // カードを並べる親（空オブジェクトなど）
-
+    GameObject RainbowArea;
+    GameObject BlackArea;
     void Awake()
     {
         if (Instance == null)
         {
             Instance = this;
         }
+        RainbowArea = GameObject.Find("置き場_Rainbow");
+        BlackArea = GameObject.Find("置き場_Black");
     }
 
     public void CalledOnClickStartButton()
@@ -55,7 +58,7 @@ public class CardDistributeManager : MonoBehaviourPunCallbacks
     void GenerateCards(string[] shuffledImageNames)
     {
         Debug.Log("GenerateCards called");
-        SetModeCustom();
+        shuffledImageNames = SetModeCustom(shuffledImageNames);
         for (int i = 0; i < shuffledImageNames.Length; i++)
         {
             // 画像名からカード情報を取得
@@ -102,7 +105,7 @@ public class CardDistributeManager : MonoBehaviourPunCallbacks
                 card.SetOwnerId(seat); // カードの所有者座席を設定
                 card.indexInOwner = j; // 所有者内でのインデックスを設定
                 CardList.seats[seat].Add(gameObject);
-        
+
                 gameObject.transform.position = basePosition + offset * j;  // 初期手札移動はアニメーションにしない
             }
         }
@@ -145,32 +148,45 @@ public class CardDistributeManager : MonoBehaviourPunCallbacks
         }
     }
 
-    private void SetModeCustom()
+    private string[] SetModeCustom(string[] shuffledImageNames)
     {
         if (PhotonNetwork.CurrentRoom == null ||
             !PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue(RoomManager.MODE, out object obj) ||
             obj == null)
         {
-            return;
+            Debug.Assert(false, "予期せぬエラー：SetModeCustom");
+            return new string[1];
         }
         string modeName = obj.ToString();
         if (modeName == "Normal")
         {
-            GameObject.Find("置き場_Rainbow").SetActive(false);
-            GameObject.Find("置き場_Black").SetActive(false);
+            RainbowArea.SetActive(false);
+            BlackArea.SetActive(false);
+            // カードからRainbowとBlackを除く
+            shuffledImageNames = shuffledImageNames
+                .Where(name => !name.Contains("Rainbow") && !name.Contains("Black"))
+                .ToArray();
         }
         else if (modeName == "Rainbow")
         {
-            GameObject.Find("置き場_Black").SetActive(false);
+            BlackArea.SetActive(false);
+            // カードからBlackを除く
+            shuffledImageNames = shuffledImageNames
+                .Where(name => !name.Contains("Black"))
+                .ToArray();
         }
         else if (modeName == "Black")
         {
-            GameObject.Find("置き場_Rainbow").SetActive(false);
+            RainbowArea.SetActive(false);
+            // カードからRainbowを除く
+            shuffledImageNames = shuffledImageNames
+                .Where(name => !name.Contains("Rainbow"))
+                .ToArray();
         }
         else
         {
-            
         }
 
+        return shuffledImageNames;
     }
 }
