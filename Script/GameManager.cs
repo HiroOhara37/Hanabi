@@ -14,6 +14,7 @@ public class GameManager : MonoBehaviourPun
     private int discardCount; // 捨て札の枚数
     public TextMeshProUGUI hintCountText;
     public TextMeshProUGUI errorCountText;
+    public TextMeshPro deckAmount;
 
     public static int hintCount; // ヒントの残数
     private int errorCount; // 失敗数
@@ -39,6 +40,10 @@ public class GameManager : MonoBehaviourPun
     {
         hintCountText.text = $"ヒント数：{hintCount}";
         errorCountText.text = $"エラー：{errorCount}";
+        if (CardList.deck != null)
+        {
+            deckAmount.text = $"{CardList.deck.Count}枚";            
+        }
     }
 
     void Init()
@@ -123,12 +128,22 @@ public class GameManager : MonoBehaviourPun
             //捨て札の位置を取得
             changedPosition = RoomManager.worldPositions["Discard"] + RoomManager.worldPositions["DiscardOffset"] * discardCount;
             discardCount++;
+            CardList.discard.Add(cardObject);
         }
         else
         {
             // 正解の色のPlaceの位置を取得
-            state[color] += 1;
-            int offsetNum = state[color];
+            int offsetNum = 0;
+            if (color == "Black")
+            {
+                state[color] -= 1;
+                offsetNum = 6 - state[color];
+            }
+            else
+            {
+                state[color] += 1;
+                offsetNum = state[color];
+            }
             changedPosition = RoomManager.worldPositions[color] + new Vector3(0f, 0f, -1f - 0.01f * offsetNum);
         }
 

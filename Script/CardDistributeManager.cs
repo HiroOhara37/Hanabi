@@ -10,9 +10,9 @@ using TMPro;
 public class CardDistributeManager : MonoBehaviourPunCallbacks
 {
     public static CardDistributeManager Instance { get; private set; }
-    [SerializeField] private Transform cardParent;  // カードを並べる親（空オブジェクトなど）
     GameObject RainbowArea;
     GameObject BlackArea;
+    public GameObject playerListPanel;
     void Awake()
     {
         if (Instance == null)
@@ -47,10 +47,6 @@ public class CardDistributeManager : MonoBehaviourPunCallbacks
         Debug.Log("DeleteCards called");
         // 既存のカードを削除
         CardList.Clear();
-        foreach (Transform child in cardParent)
-        {
-            Destroy(child.gameObject);
-        }
     }
 
     // カード生成:Instantiateで生成するため、１人が実行で全員に同期される

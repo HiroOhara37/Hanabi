@@ -9,7 +9,7 @@ using TMPro;
 using System.Collections.Generic;
 using UnityEngine.EventSystems;
 
-public static  class CardList
+public static class CardList
 {
     public static List<GameObject> deck;
     public static List<GameObject> discard;
@@ -104,7 +104,7 @@ public class RoomManager : MonoBehaviourPunCallbacks
         else
         {
             modePanel.SetActive(true);
-            isModePanelOpen = true;            
+            isModePanelOpen = true;
         }
     }
 
@@ -197,10 +197,13 @@ public class RoomManager : MonoBehaviourPunCallbacks
     // =========================
     // 途中参加・途中離脱
     // =========================
+
     // プレイヤーがルームを離れたときに呼ばれる
     public override void OnPlayerLeftRoom(Player otherPlayer)
     {
         Debug.Log($"OnPlayerLeftRoom called: {otherPlayer.NickName}");
+        if (PhotonNetwork.IsMasterClient) FindAnyObjectByType<LogManager>().photonView.RPC("WriteLog", RpcTarget.All, $"プレイヤー {otherPlayer.NickName} が退出しました。");
+
         // RoomSelectManager側のプロパティ:Slot情報を開放
         if (otherPlayer.CustomProperties.TryGetValue("PlayerSlot", out object slotObj))
         {
@@ -245,13 +248,13 @@ public class RoomManager : MonoBehaviourPunCallbacks
     public override void OnJoinedRoom()
     {
         Debug.Log("OnJoinedRoom called");
+        FindAnyObjectByType<LogManager>().photonView.RPC("WriteLog", RpcTarget.All, $"プレイヤー {PhotonNetwork.LocalPlayer.NickName} が入室しました。");
         // 開始済み（席テーブルあり）なら空いている有効席へ自動割当を試みる
         if (HasSeatTable())
         {
             TryOccupySeatForSelfIfPossible();
         }
     }
-
 
     // =========================
     // 自分の席/観戦状態反映
