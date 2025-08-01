@@ -11,6 +11,7 @@ public class LogManager : MonoBehaviourPun
     [PunRPC]
     public void WriteLog(string newLog)
     {
+        Debug.Log($"WriteLog called. text = {newLog}");
         string currentLog = logText.text;
         string[] splitLogs = currentLog.Split("\n");
         // 最新14件を取得（15件以上あれば末尾から14件、そうでなければ全部）
@@ -18,7 +19,7 @@ public class LogManager : MonoBehaviourPun
             ? splitLogs.Skip(splitLogs.Length - 14).ToArray()
             : splitLogs;
 
-        logText.text = string.Join("\n", latestLogs) + "\n" + newLog;
+        logText.text = newLog + "\n" + string.Join("\n", latestLogs);
     }
 
 }

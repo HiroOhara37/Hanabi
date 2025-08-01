@@ -90,6 +90,7 @@ public class RoomManager : MonoBehaviourPunCallbacks
         modePanel = GameObject.Find("ModePanel");
         modePanel.SetActive(false);
         isModePanelOpen = false;
+        FindAnyObjectByType<LogManager>().photonView.RPC("WriteLog", RpcTarget.All, $"プレイヤー {PhotonNetwork.LocalPlayer.NickName} が入室しました。");
     }
 
     // 開始ボタン押下 -> モード選択パネル起動(またはクローズ)
@@ -245,7 +246,7 @@ public class RoomManager : MonoBehaviourPunCallbacks
     }
 
     // プレイヤーがルームに参加した時
-    public override void OnJoinedRoom()
+    /*public override void OnJoinedRoom()
     {
         Debug.Log("OnJoinedRoom called");
         FindAnyObjectByType<LogManager>().photonView.RPC("WriteLog", RpcTarget.All, $"プレイヤー {PhotonNetwork.LocalPlayer.NickName} が入室しました。");
@@ -254,7 +255,7 @@ public class RoomManager : MonoBehaviourPunCallbacks
         {
             TryOccupySeatForSelfIfPossible();
         }
-    }
+    }*/
 
     // =========================
     // 自分の席/観戦状態反映
