@@ -90,7 +90,7 @@ public class RoomManager : MonoBehaviourPunCallbacks
         modePanel = GameObject.Find("ModePanel");
         modePanel.SetActive(false);
         isModePanelOpen = false;
-        FindAnyObjectByType<LogManager>().photonView.RPC("WriteLog", RpcTarget.All, $"プレイヤー {PhotonNetwork.LocalPlayer.NickName} が入室しました。");
+        FindAnyObjectByType<LogManager>().photonView.RPC("WriteLog", RpcTarget.AllBuffered, $"プレイヤー {PhotonNetwork.LocalPlayer.NickName} が入室しました。");
     }
 
     // 開始ボタン押下 -> モード選択パネル起動(またはクローズ)
@@ -303,8 +303,7 @@ public class RoomManager : MonoBehaviourPunCallbacks
         // なければ何もしない
     }
 
-    // Room.CustomProperties に文字列（例: "3,-1,-1,-1"）として入れてある配列風データを、
-    // int[] に変換して返す。指定長に満たない場合は defaultValue で埋める。
+    // Room.CustomProperties に文字列（例: "3,-1,-1,-1"）として入れてある配列風データをint[] に変換して返す。指定長に満たない場合は defaultValue で埋める。
     public static int[] ParseIntArray(string key, int expectedLength, int defaultValue)
     {
         Debug.Log($"ParseIntArray called: key={key}, expectedLength={expectedLength}, defaultValue={defaultValue}");
