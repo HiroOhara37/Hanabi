@@ -1,3 +1,4 @@
+using static Config;
 using UnityEngine;
 using Photon.Pun;
 using Photon.Realtime;
@@ -19,8 +20,8 @@ public static class CardList
     {
         deck = new List<GameObject>();
         discard = new List<GameObject>();
-        seats = new List<GameObject>[RoomManager.MaxSeats];
-        for (int i = 0; i < RoomManager.MaxSeats; i++)
+        seats = new List<GameObject>[MAX_SEATS];
+        for (int i = 0; i < MAX_SEATS; i++)
         {
             seats[i] = new List<GameObject>();
         }
@@ -53,15 +54,10 @@ public class RoomManager : MonoBehaviourPunCallbacks
     private CardDistributeManager cardDistributeManager;
 
     private bool inStartButtonProceed = false;
-    public const int MaxSeats = 5; // 最大プレイヤー数
     public static Dictionary<string, Vector3> worldPositions = new Dictionary<string, Vector3>();
     public GameObject modePanel;
     public bool isModePanelOpen = false;
-
-    // ---- Room Property Keys ----
-    public static string SEAT_ACTORS = "SEAT_ACTORS"; // CSV: "3,-1,-1,-1" (seatIndex -> actorNumber / -1 = empty)
-    public static string SEAT_ACTIVE = "SEAT_ACTIVE"; // CSV: "1,1,0,0"   (seatIndex -> 1=有効席, 0=無効席)
-    public static string MODE = "MODE";
+    [SerializeField] public GameObject yourTurn;  // Inspectorで指定
 
     private void Start()
     {
@@ -136,15 +132,15 @@ public class RoomManager : MonoBehaviourPunCallbacks
         Debug.Log($"StartButtonProcess called. modeName:{modeName}");
         // プレイヤー順を決定
         var players = PhotonNetwork.PlayerList.OrderBy(_ => UnityEngine.Random.Range(0, 10000)).ToList();
-        int playerCount = Mathf.Min(players.Count, MaxSeats);
-        int[] seatActors = Enumerable.Repeat(-1, MaxSeats).ToArray(); // 初期化: -1 = 空席
-        int[] seatActive = Enumerable.Repeat(0, MaxSeats).ToArray(); // 初期化: 0 = 無効席
+        int playerCount = Mathf.Min(players.Count, MAX_SEATS);
+        int[] seatActors = Enumerable.Repeat(-1, MAX_SEATS).ToArray(); // 初期化: -1 = 空席
+        int[] seatActive = Enumerable.Repeat(0, MAX_SEATS).ToArray(); // 初期化: 0 = 無効席
 
         for (int seat = 0; seat < playerCount; seat++)
         {
             var p = players[seat];
-            seatActors[seat] = p.ActorNumber; // プレイヤーのIDを座席に割り当て
-            seatActive[seat] = 1; // 有効席に設定
+            seatActors[seat] = p.ActorNumber;  // プレイヤーのIDを座席に割り当て
+            seatActive[seat] = 1;  // 有効席に設定
             Debug.Log($"Seat {seat} assigned to Player {p.NickName} (Actor: {p.ActorNumber})");
         }
 
@@ -154,7 +150,8 @@ public class RoomManager : MonoBehaviourPunCallbacks
             {
                 { SEAT_ACTORS, string.Join(",", seatActors) },
                 { SEAT_ACTIVE, string.Join(",", seatActive) },
-                { MODE, modeName }
+                { MODE, modeName },
+                { TURN_SEAT, seatActors[0]}
             });
     }
 
@@ -166,6 +163,17 @@ public class RoomManager : MonoBehaviourPunCallbacks
         {
             inStartButtonProceed = false;
             CardDistributeManager.Instance.CalledOnClickStartButton();
+        }
+
+        // TurnSeatの更新で呼ばれた場合の処理
+        // 自分のターンならYourTurnパネルを表示
+        if (IsTurnSeat(PhotonNetwork.LocalPlayer.ActorNumber))
+        {
+            yourTurn.SetActive(true);
+        }
+        else
+        {
+            yourTurn.SetActive(false);
         }
     }
 
@@ -180,7 +188,7 @@ public class RoomManager : MonoBehaviourPunCallbacks
     [PunRPC]
     private void SetNameHolder(string[] playerNames)
     {
-        for (int i = 1; i <= MaxSeats; i++)
+        for (int i = 1; i <= MAX_SEATS; i++)
         {
             TextMeshPro nameText = GameObject.Find($"Player{i}_NameHolder").GetComponent<TextMeshPro>();
             if (i <= playerNames.Length)
@@ -225,7 +233,7 @@ public class RoomManager : MonoBehaviourPunCallbacks
         if (!HasSeatTable()) return;
 
         bool changed = false;
-        int[] seatActors = ParseIntArray(SEAT_ACTORS, MaxSeats, -1);
+        int[] seatActors = ParseIntArray(SEAT_ACTORS, MAX_SEATS, -1);
         // 退出したプレイヤーの座席を空席にする(観戦者なら何もしない)
         for (int i = 0; i < seatActors.Length; i++)
         {
@@ -262,7 +270,7 @@ public class RoomManager : MonoBehaviourPunCallbacks
     // =========================
     public static int GetActorSeat(int actorNumber)
     {
-        int[] seatActors = ParseIntArray(SEAT_ACTORS, MaxSeats, -1);
+        int[] seatActors = ParseIntArray(SEAT_ACTORS, MAX_SEATS, -1);
         int seat = -1;
         for (int i = 0; i < seatActors.Length; i++)
         {
@@ -276,6 +284,21 @@ public class RoomManager : MonoBehaviourPunCallbacks
         return seat;
     }
 
+    // actorNumberがターンの座席に座っているか
+    public static bool IsTurnSeat(int actorNumber)
+    {
+        if (PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue(TURN_SEAT, out object obj))
+        {
+            int turnSeat = (int)obj;
+            int mySeat = GetActorSeat(actorNumber);
+            return turnSeat == mySeat;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
     // 未割り当ての座席を調査し、新規参加者を割り当てる
     private void TryOccupySeatForSelfIfPossible()
     {
@@ -286,9 +309,9 @@ public class RoomManager : MonoBehaviourPunCallbacks
         if (mySeat >= 0) return;
 
         // 空いている有効席を探す
-        int[] seatActors = ParseIntArray(SEAT_ACTORS, MaxSeats, -1);
-        int[] seatActive = ParseIntArray(SEAT_ACTIVE, MaxSeats, 0);
-        for (int i = 0; i < MaxSeats; i++)
+        int[] seatActors = ParseIntArray(SEAT_ACTORS, MAX_SEATS, -1);
+        int[] seatActive = ParseIntArray(SEAT_ACTIVE, MAX_SEATS, 0);
+        for (int i = 0; i < MAX_SEATS; i++)
         {
             if (seatActive[i] == 1 && seatActors[i] == -1)
             {

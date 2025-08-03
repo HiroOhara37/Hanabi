@@ -1,3 +1,4 @@
+using static Config;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -79,7 +80,7 @@ public class CardDistributeManager : MonoBehaviourPunCallbacks
     {
         Debug.Log("FirstSetupCards called");
         SetHandleAreas();
-        int[] seatActive = RoomManager.ParseIntArray(RoomManager.SEAT_ACTIVE, RoomManager.MaxSeats, -1);
+        int[] seatActive = RoomManager.ParseIntArray(SEAT_ACTIVE, MAX_SEATS, -1);
         List<int> activeSeatIdx = Enumerable.Range(0, seatActive.Length).Where(i => seatActive[i] == 1).ToList();
         int cardsPerPlayer = (activeSeatIdx.Count == 4) ? 4 : 5;  // 2, 3人は5枚、4人は4枚
         Debug.Assert(GameManager.basePositions.Count == activeSeatIdx.Count, $"ポジション数:{GameManager.basePositions.Count}とアクティブ座席数:{activeSeatIdx.Count}が不一致です。");
@@ -112,7 +113,7 @@ public class CardDistributeManager : MonoBehaviourPunCallbacks
         Debug.Log("SetHandleAreas called");
         List<Vector3> positions = new List<Vector3>();
 
-        int[] seatActors = RoomManager.ParseIntArray(RoomManager.SEAT_ACTORS, RoomManager.MaxSeats, -1);
+        int[] seatActors = RoomManager.ParseIntArray(SEAT_ACTORS, MAX_SEATS, -1);
         int otherIndex = 1;
         int mySeat = Math.Max(RoomManager.GetActorSeat(PhotonNetwork.LocalPlayer.ActorNumber), 0); // 観戦者ならプレイヤー1の配置を参照
 
@@ -147,7 +148,7 @@ public class CardDistributeManager : MonoBehaviourPunCallbacks
     private string[] SetModeCustom(string[] shuffledImageNames)
     {
         if (PhotonNetwork.CurrentRoom == null ||
-            !PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue(RoomManager.MODE, out object obj) ||
+            !PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue(MODE, out object obj) ||
             obj == null)
         {
             Debug.Assert(false, "予期せぬエラー：SetModeCustom");

@@ -1,0 +1,24 @@
+using System.Collections.Generic;
+using UnityEngine;
+
+public static class Config
+{
+    public const int MAX_SEATS = 5;
+    public const string MODE = "MODE";
+    public const string SEAT_ACTORS = "SEAT_ACTORS";  // CSV: "3,-1,-1,-1" (seatIndex -> actorNumber / -1 = empty)
+    public const string SEAT_ACTIVE = "SEAT_ACTIVE";  // CSV: "1,1,0,0"   (seatIndex -> 1=有効席, 0=無効席)
+    public const string TURN_SEAT = "TURN_SEAT";
+
+    // デフォルトタイマー秒数なども定義可能
+    public const float MOVE_SPEED = 0.5f;
+
+    // 色
+    public static readonly Dictionary<string, Color> COLOR_DICT = new Dictionary<string, Color>()
+    {
+        {"Red", Color.red},
+        {"Green", Color.green},
+        {"White", Color.white},
+        {"Blue", Color.blue},
+        {"Yellow", Color.yellow}
+    };
+}

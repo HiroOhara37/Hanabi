@@ -1,3 +1,4 @@
+using static Config;
 using UnityEngine;
 using Photon.Pun;
 using System.Linq;
@@ -6,28 +7,19 @@ using System.Threading;
 using System;
 using TMPro;
 using DG.Tweening;
+using PhotonHashtable = ExitGames.Client.Photon.Hashtable;
 
 public class GameManager : MonoBehaviourPun
 {
     // 場に出されたカードの状態を保存
     private Dictionary<string, int> state;
     private int discardCount; // 捨て札の枚数
-    public TextMeshProUGUI hintCountText;
-    public TextMeshProUGUI errorCountText;
-    public TextMeshPro deckAmount;
+    [SerializeField] public TextMeshProUGUI hintCountText;  // Inspectorで指定
+    [SerializeField] public TextMeshProUGUI errorCountText;  // Inspectorで指定
+    [SerializeField] public TextMeshPro deckAmount;  // Inspectorで指定
 
     public static int hintCount; // ヒントの残数
     private int errorCount; // 失敗数
-    public float moveSpeed = 0.5f;
-    // 色
-    private Dictionary<string, Color> myColors = new Dictionary<string, Color>()
-    {
-        {"Red", Color.red},
-        {"Green", Color.green},
-        {"White", Color.white},
-        {"Blue", Color.blue},
-        {"Yellow", Color.yellow}
-    };
     // 手札のポジション
     public static Dictionary<int, Vector3> basePositions = new Dictionary<int, Vector3>();
 
@@ -42,7 +34,7 @@ public class GameManager : MonoBehaviourPun
         errorCountText.text = $"エラー：{errorCount}";
         if (CardList.deck != null)
         {
-            deckAmount.text = $"{CardList.deck.Count}枚";            
+            deckAmount.text = $"{CardList.deck.Count}枚";
         }
     }
 
@@ -147,7 +139,7 @@ public class GameManager : MonoBehaviourPun
             changedPosition = RoomManager.worldPositions[color] + new Vector3(0f, 0f, -1f - 0.01f * offsetNum);
         }
 
-        cardObject.transform.DOMove(changedPosition, moveSpeed);
+        cardObject.transform.DOMove(changedPosition, MOVE_SPEED);
 
         // 選択カードのステータスを更新
         card.SetOwnerId(CardOwner.Discard); // これで所有者にも表が向く
@@ -164,8 +156,7 @@ public class GameManager : MonoBehaviourPun
         // カードとヒントの位置を調整
         SetCardsNewPositon(CardList.seats[ownerId], ownerId);
 
-        // 完了SEを実行
-        AudioPlayer.Instance.PlaySE(AudioPlayer.Instance.finishPlayng);
+        EndAction();
     }
 
     public void SetAddCard(int ownerId)
@@ -184,7 +175,7 @@ public class GameManager : MonoBehaviourPun
         Vector3 offset = RoomManager.worldPositions["Offset"];
         Vector3 addPosition = basePosition + offset * card.indexInOwner;
 
-        cardObject.transform.DOMove(addPosition, moveSpeed);
+        cardObject.transform.DOMove(addPosition, MOVE_SPEED);
     }
 
     public void OnClickNumberHintButton()
@@ -256,7 +247,7 @@ public class GameManager : MonoBehaviourPun
             GameObject newHintChip = Instantiate(hintChipPrefab);
             // SpriteRendererのカラー設定
             var spriteRenderer = newHintChip.GetComponent<SpriteRenderer>();
-            spriteRenderer.color = myColors[color];
+            spriteRenderer.color = COLOR_DICT[color];
             // 子オブジェクトのTextMeshProを取得してテキストを設定
             var textMesh = newHintChip.GetComponentInChildren<TextMeshPro>();
             textMesh.text = number;
@@ -269,8 +260,7 @@ public class GameManager : MonoBehaviourPun
             card.hintChips.Add(newHintChip);
         }
 
-        // 完了SEを実行
-        AudioPlayer.Instance.PlaySE(AudioPlayer.Instance.finishPlayng);
+        EndAction();
     }
 
     public bool CheckPlayAnswer(Card card)
@@ -321,16 +311,38 @@ public class GameManager : MonoBehaviourPun
             // 差分だけoffsetを移動する
             Vector3 currentPos = cardObject.transform.position;
             Vector3 thisCardOffset = offset * diff;
-            cardObject.transform.DOMove(currentPos + thisCardOffset, moveSpeed);
+            cardObject.transform.DOMove(currentPos + thisCardOffset, MOVE_SPEED);
             card.indexInOwner = i;
 
             // ヒントも移動
             foreach (GameObject hintObj in card.hintChips)
             {
                 Vector3 currentHintPos = hintObj.transform.position;
-                hintObj.transform.DOMove(currentHintPos + thisCardOffset, moveSpeed);
+                hintObj.transform.DOMove(currentHintPos + thisCardOffset, MOVE_SPEED);
             }
         }
     }
 
+    private void EndAction()
+    {
+        // 完了のSEを鳴らす
+        AudioPlayer.Instance.PlaySE(AudioPlayer.Instance.finishPlayng);
+        // 呼び出し元がPunのため、マスタークライアントのみで実施
+        if (!PhotonNetwork.IsMasterClient) return;
+        Debug.Log("EndAction called");
+        int[] seatActive = RoomManager.ParseIntArray(SEAT_ACTIVE, MAX_SEATS, -1);
+        int turnSeat = (int)PhotonNetwork.CurrentRoom.CustomProperties[TURN_SEAT];
+
+        // 次のターンの座席を取得
+        int nextTurnSeat = 0;
+        if (seatActive[turnSeat + 1] == 1)
+        {
+            nextTurnSeat = turnSeat + 1;
+        }
+
+        // TURN_SEAT を更新
+        PhotonHashtable hash = new PhotonHashtable();
+        hash[TURN_SEAT] = nextTurnSeat;
+        PhotonNetwork.CurrentRoom.SetCustomProperties(hash);
+    }
 }

@@ -4,7 +4,6 @@ using UnityEngine.InputSystem;
 public class CameraController2D : MonoBehaviour
 {
     public float zoomSpeed = 240f;
-    public float moveSpeed = 0.8f;
     public float minZoom = 10f;
     public float maxZoom = 150f;
 
