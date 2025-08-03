@@ -151,13 +151,19 @@ public class RoomManager : MonoBehaviourPunCallbacks
                 { SEAT_ACTORS, string.Join(",", seatActors) },
                 { SEAT_ACTIVE, string.Join(",", seatActive) },
                 { MODE, modeName },
-                { TURN_SEAT, seatActors[0]}
+                { TURN_SEAT, 0}
             });
     }
 
-    public override void OnRoomPropertiesUpdate(PhotonHashtable changedProp)
+    public override void OnRoomPropertiesUpdate(PhotonHashtable changedProps)
     {
         Debug.Log("OnRoomPropertiesUpdate called");
+        foreach (var key in changedProps.Keys)
+        {
+            object value = changedProps[key];
+            Debug.Log($"[RoomProperty] {key} = {value}");
+        }
+
         // 開始処理でのプロパティ変更ならカード生成処理
         if (inStartButtonProceed) // マスタークライアントしかtrueになりえない
         {
