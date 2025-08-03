@@ -63,6 +63,7 @@ public class GameManager : MonoBehaviourPun
         {
             // あなたのターンではありません。を表示し処理を行わない
             StartCoroutine(ShowNotYourTurn());
+            return;
         }
         var (cardIndex, ownerId, indexInOwner) = CardSelectManager.Instance?.CalledPlayOrDiscard() ?? (-1, -1, -1);
         Debug.Assert(cardIndex != -1, "選択対象がnullでした。");
@@ -99,6 +100,7 @@ public class GameManager : MonoBehaviourPun
         {
             // あなたのターンではありません。を表示し処理を行わない
             StartCoroutine(ShowNotYourTurn());
+            return;
         }
         var (cardIndex, ownerId, indexInOwner) = CardSelectManager.Instance?.CalledPlayOrDiscard() ?? (-1, -1, -1);
         Debug.Assert(cardIndex != -1, "選択対象がnullでした。");
@@ -202,6 +204,7 @@ public class GameManager : MonoBehaviourPun
         {
             // あなたのターンではありません。を表示し処理を行わない
             StartCoroutine(ShowNotYourTurn());
+            return;
         }
 
         var (ownerId, indexInOwner, cardNumber, cardColor) = CardSelectManager.Instance?.CalledHint() ?? (-1, -1, -1, "");
@@ -228,8 +231,9 @@ public class GameManager : MonoBehaviourPun
         {
             // あなたのターンではありません。を表示し処理を行わない
             StartCoroutine(ShowNotYourTurn());
+            return;
         }
-        
+
         var (ownerId, indexInOwner, cardNumber, cardColor) = CardSelectManager.Instance?.CalledHint() ?? (-1, -1, -1, "");
         Debug.Assert(cardColor != "", "Error OnClickColorHintButton");
         LOGGER.photonView.RPC("WriteLog", RpcTarget.All,

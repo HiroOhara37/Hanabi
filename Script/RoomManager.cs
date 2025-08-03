@@ -115,9 +115,10 @@ public class RoomManager : MonoBehaviourPunCallbacks
         GameObject clickedButton = EventSystem.current.currentSelectedGameObject;
         string modeName = clickedButton.name.Split("_")[1];
         Debug.Log($"modeName:{modeName}");
+        LOGGER.photonView.RPC("WriteLog", RpcTarget.AllBuffered, $"ゲームが開始されました。");
+
         if (PhotonNetwork.IsMasterClient)
         {
-            LOGGER.photonView.RPC("WriteLog", RpcTarget.AllBuffered, $"ゲームが開始されました。");
             StartButtonProcess(modeName); // 直呼び
         }
         else
