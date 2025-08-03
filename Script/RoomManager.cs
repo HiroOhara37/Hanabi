@@ -86,7 +86,7 @@ public class RoomManager : MonoBehaviourPunCallbacks
         modePanel = GameObject.Find("ModePanel");
         modePanel.SetActive(false);
         isModePanelOpen = false;
-        FindAnyObjectByType<LogManager>().photonView.RPC("WriteLog", RpcTarget.AllBuffered, $"プレイヤー {PhotonNetwork.LocalPlayer.NickName} が入室しました。");
+        LOGGER.photonView.RPC("WriteLog", RpcTarget.AllBuffered, $"プレイヤー {PhotonNetwork.LocalPlayer.NickName} が入室しました。");
     }
 
     // 開始ボタン押下 -> モード選択パネル起動(またはクローズ)
@@ -117,6 +117,7 @@ public class RoomManager : MonoBehaviourPunCallbacks
         Debug.Log($"modeName:{modeName}");
         if (PhotonNetwork.IsMasterClient)
         {
+            LOGGER.photonView.RPC("WriteLog", RpcTarget.AllBuffered, $"ゲームが開始されました。");
             StartButtonProcess(modeName); // 直呼び
         }
         else
@@ -217,7 +218,8 @@ public class RoomManager : MonoBehaviourPunCallbacks
     public override void OnPlayerLeftRoom(Player otherPlayer)
     {
         Debug.Log($"OnPlayerLeftRoom called: {otherPlayer.NickName}");
-        if (PhotonNetwork.IsMasterClient) FindAnyObjectByType<LogManager>().photonView.RPC("WriteLog", RpcTarget.All, $"プレイヤー {otherPlayer.NickName} が退出しました。");
+        if (PhotonNetwork.IsMasterClient)
+            LOGGER.photonView.RPC("WriteLog", RpcTarget.All,$"プレイヤー {otherPlayer.NickName} が退出しました。");
 
         // RoomSelectManager側のプロパティ:Slot情報を開放
         if (otherPlayer.CustomProperties.TryGetValue("PlayerSlot", out object slotObj))
@@ -259,18 +261,6 @@ public class RoomManager : MonoBehaviourPunCallbacks
         }
     }
 
-    // プレイヤーがルームに参加した時
-    /*public override void OnJoinedRoom()
-    {
-        Debug.Log("OnJoinedRoom called");
-        FindAnyObjectByType<LogManager>().photonView.RPC("WriteLog", RpcTarget.All, $"プレイヤー {PhotonNetwork.LocalPlayer.NickName} が入室しました。");
-        // 開始済み（席テーブルあり）なら空いている有効席へ自動割当を試みる
-        if (HasSeatTable())
-        {
-            TryOccupySeatForSelfIfPossible();
-        }
-    }*/
-
     // =========================
     // 自分の席/観戦状態反映
     // =========================
@@ -290,19 +280,24 @@ public class RoomManager : MonoBehaviourPunCallbacks
         return seat;
     }
 
-    // actorNumberがターンの座席に座っているか
-    public static bool IsTurnSeat(int actorNumber)
+    public static int GetTurnSeat()
     {
         if (PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue(TURN_SEAT, out object obj))
         {
-            int turnSeat = (int)obj;
-            int mySeat = GetActorSeat(actorNumber);
-            return turnSeat == mySeat;
+            return (int)obj;
         }
         else
         {
-            return false;
+            return -1;
         }
+    }
+
+    // actorNumberがターンの座席に座っているか
+    public static bool IsTurnSeat(int actorNumber)
+    {
+            int turnSeat = GetTurnSeat();
+            int mySeat = GetActorSeat(actorNumber);
+            return turnSeat != -1 && mySeat != -1 && turnSeat == mySeat;
     }
 
     // 未割り当ての座席を調査し、新規参加者を割り当てる

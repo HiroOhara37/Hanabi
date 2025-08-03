@@ -8,6 +8,7 @@ using System;
 using TMPro;
 using DG.Tweening;
 using PhotonHashtable = ExitGames.Client.Photon.Hashtable;
+using System.Collections;
 
 public class GameManager : MonoBehaviourPun
 {
@@ -58,8 +59,16 @@ public class GameManager : MonoBehaviourPun
     public void OnClickPlayButton()
     {
         Debug.Log("OnClickPlayButton called");
+        if (!RoomManager.IsTurnSeat(PhotonNetwork.LocalPlayer.ActorNumber))
+        {
+            // あなたのターンではありません。を表示し処理を行わない
+            StartCoroutine(ShowNotYourTurn());
+        }
         var (cardIndex, ownerId, indexInOwner) = CardSelectManager.Instance?.CalledPlayOrDiscard() ?? (-1, -1, -1);
         Debug.Assert(cardIndex != -1, "選択対象がnullでした。");
+        Card card = CardList.seats[ownerId][indexInOwner].GetComponent<Card>();
+        LOGGER.photonView.RPC("WriteLog", RpcTarget.All,
+            $"プレイヤー{RoomManager.GetActorSeat(PhotonNetwork.LocalPlayer.ActorNumber) + 1}は、{COLOR_NAME[card.cardColor]}の{card.cardNumber}のカードを場に出しました。");
         photonView.RPC("PlayRPC", RpcTarget.AllBuffered, cardIndex, ownerId, indexInOwner);
     }
 
@@ -86,8 +95,16 @@ public class GameManager : MonoBehaviourPun
     public void OnClickDiscardButton()
     {
         Debug.Log("OnClickDiscardButton called");
+        if (!RoomManager.IsTurnSeat(PhotonNetwork.LocalPlayer.ActorNumber))
+        {
+            // あなたのターンではありません。を表示し処理を行わない
+            StartCoroutine(ShowNotYourTurn());
+        }
         var (cardIndex, ownerId, indexInOwner) = CardSelectManager.Instance?.CalledPlayOrDiscard() ?? (-1, -1, -1);
         Debug.Assert(cardIndex != -1, "選択対象がnullでした。");
+        Card card = CardList.seats[ownerId][indexInOwner].GetComponent<Card>();
+        LOGGER.photonView.RPC("WriteLog", RpcTarget.All,
+            $"プレイヤー{RoomManager.GetActorSeat(PhotonNetwork.LocalPlayer.ActorNumber) + 1}は、{COLOR_NAME[card.cardColor]}の{card.cardNumber}のカードを捨てました。");
         photonView.RPC("DiscardRPC", RpcTarget.AllBuffered, cardIndex, ownerId, indexInOwner);
     }
 
@@ -181,8 +198,16 @@ public class GameManager : MonoBehaviourPun
     public void OnClickNumberHintButton()
     {
         Debug.Log("OnClickNumberHintButton called");
+        if (!RoomManager.IsTurnSeat(PhotonNetwork.LocalPlayer.ActorNumber))
+        {
+            // あなたのターンではありません。を表示し処理を行わない
+            StartCoroutine(ShowNotYourTurn());
+        }
+
         var (ownerId, indexInOwner, cardNumber, cardColor) = CardSelectManager.Instance?.CalledHint() ?? (-1, -1, -1, "");
         Debug.Assert(cardColor != "", "Error OnClickNumberHintButton");
+        LOGGER.photonView.RPC("WriteLog", RpcTarget.All,
+            $"プレイヤー{RoomManager.GetActorSeat(PhotonNetwork.LocalPlayer.ActorNumber) + 1}は、プレイヤー{ownerId + 1}に{cardNumber}の数字のヒントを出しました。");
 
         List<bool> hintTarget = new List<bool>();
         foreach (GameObject cardObj in CardList.seats[ownerId])
@@ -199,8 +224,16 @@ public class GameManager : MonoBehaviourPun
     public void OnClickColorHintButton()
     {
         Debug.Log("OnClickColorHintButton called");
+        if (!RoomManager.IsTurnSeat(PhotonNetwork.LocalPlayer.ActorNumber))
+        {
+            // あなたのターンではありません。を表示し処理を行わない
+            StartCoroutine(ShowNotYourTurn());
+        }
+        
         var (ownerId, indexInOwner, cardNumber, cardColor) = CardSelectManager.Instance?.CalledHint() ?? (-1, -1, -1, "");
         Debug.Assert(cardColor != "", "Error OnClickColorHintButton");
+        LOGGER.photonView.RPC("WriteLog", RpcTarget.All,
+            $"プレイヤー{RoomManager.GetActorSeat(PhotonNetwork.LocalPlayer.ActorNumber) + 1}は、プレイヤー{ownerId + 1}に{COLOR_NAME[cardColor]}の色のヒントを出しました。");
 
         List<bool> hintTarget = new List<bool>();
         foreach (GameObject cardObj in CardList.seats[ownerId])
@@ -344,5 +377,12 @@ public class GameManager : MonoBehaviourPun
         PhotonHashtable hash = new PhotonHashtable();
         hash[TURN_SEAT] = nextTurnSeat;
         PhotonNetwork.CurrentRoom.SetCustomProperties(hash);
+    }
+
+    private IEnumerator ShowNotYourTurn()
+    {
+        NOT_YOUR_TURN.SetActive(true);
+        yield return new WaitForSeconds(1f);
+        NOT_YOUR_TURN.SetActive(false);
     }
 }
