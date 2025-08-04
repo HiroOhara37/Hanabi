@@ -12,10 +12,6 @@ public static class Config
     // デフォルトタイマー秒数なども定義可能
     public const float MOVE_SPEED = 0.5f;
 
-    // オブジェクト
-    public static LogManager LOGGER;
-    public static GameObject NOT_YOUR_TURN;
-
     // 色
     public static readonly Dictionary<string, Color> COLOR_DICT = new Dictionary<string, Color>()
     {
@@ -37,11 +33,4 @@ public static class Config
         {"Black", "黒"}
     };
 
-    static Config() // ← アプリ実行時に最初に1回だけ呼ばれる
-    {
-        Debug.Log("[Config] static constructor called");
-        LOGGER = UnityEngine.Object.FindAnyObjectByType<LogManager>();
-        NOT_YOUR_TURN = GameObject.Find("NotYourTurn");
-        NOT_YOUR_TURN.SetActive(false);
-    }
 }

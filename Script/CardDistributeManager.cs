@@ -1,4 +1,5 @@
 using static Config;
+using static Property;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,17 +12,13 @@ using TMPro;
 public class CardDistributeManager : MonoBehaviourPunCallbacks
 {
     public static CardDistributeManager Instance { get; private set; }
-    GameObject RainbowArea;
-    GameObject BlackArea;
-    public GameObject playerListPanel;
+
     void Awake()
     {
         if (Instance == null)
         {
             Instance = this;
         }
-        RainbowArea = GameObject.Find("置き場_Rainbow");
-        BlackArea = GameObject.Find("置き場_Black");
     }
 
     public void CalledOnClickStartButton()
@@ -48,6 +45,7 @@ public class CardDistributeManager : MonoBehaviourPunCallbacks
         Debug.Log("DeleteCards called");
         // 既存のカードを削除
         CardList.Clear();
+        InitProp();
     }
 
     // カード生成:Instantiateで生成するため、１人が実行で全員に同期される
@@ -64,7 +62,7 @@ public class CardDistributeManager : MonoBehaviourPunCallbacks
             string cardNumber = parts[1][0].ToString();
 
             // カード生成
-            Vector3 pos = RoomManager.worldPositions["Deck"] + new Vector3(0, 0, -0.02f * i - 1f);
+            Vector3 pos = worldPositions["Deck"] + new Vector3(0, 0, -0.02f * i - 1f);
             GameObject cardPrefab = Resources.Load<GameObject>("Prefab/Card");
             GameObject card = Instantiate(cardPrefab, pos, Quaternion.identity);
             card.name = $"Card_{shuffledImageNames[i]}";
@@ -94,7 +92,7 @@ public class CardDistributeManager : MonoBehaviourPunCallbacks
 
             // 各カードをプレイヤーの手札に配置
             Vector3 basePosition = GameManager.basePositions[seat];
-            Vector3 offset = RoomManager.worldPositions["Offset"]; // 2枚目以降、どれだけずらすか
+            Vector3 offset = worldPositions["Offset"]; // 2枚目以降、どれだけずらすか
             for (int j = 0; j < playerCards.Count; j++)
             {
                 var gameObject = playerCards[j];
@@ -125,7 +123,7 @@ public class CardDistributeManager : MonoBehaviourPunCallbacks
             {
                 TextMeshPro nameText = GameObject.Find($"Myself_NameHolder").GetComponent<TextMeshPro>();
                 nameText.text = $"Player{i + 1}：{player.NickName}";
-                GameManager.basePositions[i] = RoomManager.worldPositions["Myself"];
+                GameManager.basePositions[i] = worldPositions["Myself"];
             }
             else
             {
@@ -138,7 +136,7 @@ public class CardDistributeManager : MonoBehaviourPunCallbacks
                 else
                 {
                     nameText.text = $"Player{i + 1}：{player.NickName}";
-                    GameManager.basePositions[i] = RoomManager.worldPositions[$"Other{otherIndex}"];
+                    GameManager.basePositions[i] = worldPositions[$"Other{otherIndex}"];
                 }
                 otherIndex++;
             }
@@ -157,8 +155,8 @@ public class CardDistributeManager : MonoBehaviourPunCallbacks
         string modeName = obj.ToString();
         if (modeName == "Normal")
         {
-            RainbowArea.SetActive(false);
-            BlackArea.SetActive(false);
+            RAINBOW_AREA.SetActive(false);
+            BLACK_AREA.SetActive(false);
             // カードからRainbowとBlackを除く
             shuffledImageNames = shuffledImageNames
                 .Where(name => !name.Contains("Rainbow") && !name.Contains("Black"))
@@ -166,7 +164,7 @@ public class CardDistributeManager : MonoBehaviourPunCallbacks
         }
         else if (modeName == "Rainbow")
         {
-            BlackArea.SetActive(false);
+            BLACK_AREA.SetActive(false);
             // カードからBlackを除く
             shuffledImageNames = shuffledImageNames
                 .Where(name => !name.Contains("Black"))
@@ -174,7 +172,7 @@ public class CardDistributeManager : MonoBehaviourPunCallbacks
         }
         else if (modeName == "Black")
         {
-            RainbowArea.SetActive(false);
+            RAINBOW_AREA.SetActive(false);
             // カードからRainbowを除く
             shuffledImageNames = shuffledImageNames
                 .Where(name => !name.Contains("Rainbow"))

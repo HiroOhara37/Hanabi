@@ -1,4 +1,5 @@
 using static Config;
+using static Property;
 using UnityEngine;
 using Photon.Pun;
 using Photon.Realtime;
@@ -13,19 +14,22 @@ using UnityEngine.EventSystems;
 public static class CardList
 {
     public static List<GameObject> deck;
+    public static List<GameObject> field;
     public static List<GameObject> discard;
     public static List<GameObject>[] seats;
 
     static CardList()
     {
-        deck = new List<GameObject>();
-        discard = new List<GameObject>();
-        seats = new List<GameObject>[MAX_SEATS];
+        deck = new List<GameObject>(); // 山札のカード
+        field = new List<GameObject>(); // 場に出されたカード
+        discard = new List<GameObject>(); // 捨て札のカード
+        seats = new List<GameObject>[MAX_SEATS]; // 手札のカード
         for (int i = 0; i < MAX_SEATS; i++)
         {
             seats[i] = new List<GameObject>();
         }
     }
+    
     public static void Clear()
     {
         foreach (var d in deck)
@@ -33,6 +37,11 @@ public static class CardList
             Object.Destroy(d);
         }
         deck.Clear();
+        foreach (var d in field)
+        {
+            Object.Destroy(d);
+        }
+        field.Clear();
         foreach (var d in discard)
         {
             Object.Destroy(d);
@@ -51,41 +60,10 @@ public static class CardList
 
 public class RoomManager : MonoBehaviourPunCallbacks
 {
-    private CardDistributeManager cardDistributeManager;
-
     private bool inStartButtonProceed = false;
-    public static Dictionary<string, Vector3> worldPositions = new Dictionary<string, Vector3>();
-    public GameObject modePanel;
-    public bool isModePanelOpen = false;
-    [SerializeField] public GameObject yourTurn;  // Inspectorで指定
 
     private void Start()
     {
-        cardDistributeManager = FindAnyObjectByType<CardDistributeManager>();
-        // 置き場
-        worldPositions["Blue"] = GameObject.Find("置き場_Blue").transform.position;
-        worldPositions["Green"] = GameObject.Find("置き場_Green").transform.position;
-        worldPositions["White"] = GameObject.Find("置き場_White").transform.position;
-        worldPositions["Yellow"] = GameObject.Find("置き場_Yellow").transform.position;
-        worldPositions["Red"] = GameObject.Find("置き場_Red").transform.position;
-        worldPositions["Rainbow"] = GameObject.Find("置き場_Rainbow").transform.position;
-        worldPositions["Black"] = GameObject.Find("置き場_Black").transform.position;
-        worldPositions["Discard"] = GameObject.Find("捨て札").transform.position + new Vector3(0f, 0f, -1f);
-        worldPositions["Deck"] = GameObject.Find("山札").transform.position + new Vector3(0f, 0f, -1f);
-        // 手札
-        worldPositions["Myself"] = GameObject.Find("HandArea_Myself").transform.position + new Vector3(-25f, 0f, -1f);
-        worldPositions["Other1"] = GameObject.Find("HandArea_Other_1").transform.position + new Vector3(-25f, 0f, -1f);
-        worldPositions["Other2"] = GameObject.Find("HandArea_Other_2").transform.position + new Vector3(-25f, 0f, -1f);
-        worldPositions["Other3"] = GameObject.Find("HandArea_Other_3").transform.position + new Vector3(-25f, 0f, -1f);
-        worldPositions["Other4"] = GameObject.Find("HandArea_Other_4").transform.position + new Vector3(-25f, 0f, -1f);
-        worldPositions["NumberHint"] = new Vector3(-1f, 6f, -1f); // カードの位置に対するヒントの差分位置
-        worldPositions["ColorHint"] = new Vector3(3f, 6f, -1f); // カードの位置に対するヒントの差分位置
-        worldPositions["Offset"] = new Vector3(12f, 0f, 0f); // カード1枚のoffset
-        worldPositions["DiscardOffset"] = new Vector3(3f, 0f, -0.01f);
-
-        modePanel = GameObject.Find("ModePanel");
-        modePanel.SetActive(false);
-        isModePanelOpen = false;
         LOGGER.photonView.RPC("WriteLog", RpcTarget.AllBuffered, $"プレイヤー {PhotonNetwork.LocalPlayer.NickName} が入室しました。");
     }
 
@@ -95,12 +73,12 @@ public class RoomManager : MonoBehaviourPunCallbacks
         Debug.Log("OnClickStartButton called");
         if (isModePanelOpen)
         {
-            modePanel.SetActive(false);
+            MODE_PANEL.SetActive(false);
             isModePanelOpen = false;
         }
         else
         {
-            modePanel.SetActive(true);
+            MODE_PANEL.SetActive(true);
             isModePanelOpen = true;
         }
     }
@@ -108,7 +86,7 @@ public class RoomManager : MonoBehaviourPunCallbacks
     // ゲーム開始処理スタート
     public void OnClickModeButton()
     {
-        modePanel.SetActive(false);
+        MODE_PANEL.SetActive(false);
         isModePanelOpen = false;
 
         // 押したボタンを取得
@@ -174,14 +152,14 @@ public class RoomManager : MonoBehaviourPunCallbacks
         }
 
         // TurnSeatの更新で呼ばれた場合の処理
-        // 自分のターンならYourTurnパネルを表示
+        // 自分のターンならYOUR_TURNパネルを表示
         if (IsTurnSeat(PhotonNetwork.LocalPlayer.ActorNumber))
         {
-            yourTurn.SetActive(true);
+            YOUR_TURN.SetActive(true);
         }
         else
         {
-            yourTurn.SetActive(false);
+            YOUR_TURN.SetActive(false);
         }
     }
 

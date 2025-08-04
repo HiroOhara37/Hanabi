@@ -1,4 +1,5 @@
 using static Config;
+using static Property;
 using UnityEngine;
 using Photon.Pun;
 using System.Linq;
@@ -13,20 +14,15 @@ using System.Collections;
 public class GameManager : MonoBehaviourPun
 {
     // 場に出されたカードの状態を保存
-    private Dictionary<string, int> state;
-    private int discardCount; // 捨て札の枚数
-    [SerializeField] public TextMeshProUGUI hintCountText;  // Inspectorで指定
-    [SerializeField] public TextMeshProUGUI errorCountText;  // Inspectorで指定
-    [SerializeField] public TextMeshPro deckAmount;  // Inspectorで指定
-
-    public static int hintCount; // ヒントの残数
-    private int errorCount; // 失敗数
+    [SerializeField] private TextMeshProUGUI hintCountText;  // Inspectorで指定
+    [SerializeField] private TextMeshProUGUI errorCountText;  // Inspectorで指定
+    [SerializeField] private TextMeshPro deckAmount;  // Inspectorで指定
     // 手札のポジション
     public static Dictionary<int, Vector3> basePositions = new Dictionary<int, Vector3>();
 
     void Start()
     {
-        Init();
+        InitProp();
     }
 
     void Update()
@@ -37,23 +33,6 @@ public class GameManager : MonoBehaviourPun
         {
             deckAmount.text = $"{CardList.deck.Count}枚";
         }
-    }
-
-    void Init()
-    {
-        state = new Dictionary<string, int>()
-        {
-            {"Red", 0},
-            {"Green", 0},
-            {"White", 0},
-            {"Blue", 0},
-            {"Yellow", 0},
-            {"Rainbow", 0},
-            {"Black", 6}
-        };
-        discardCount = 0;
-        hintCount = 8;
-        errorCount = 0;
     }
 
     public void OnClickPlayButton()
@@ -137,7 +116,7 @@ public class GameManager : MonoBehaviourPun
         if (color == "")
         {
             //捨て札の位置を取得
-            changedPosition = RoomManager.worldPositions["Discard"] + RoomManager.worldPositions["DiscardOffset"] * discardCount;
+            changedPosition = worldPositions["Discard"] + worldPositions["DiscardOffset"] * discardCount;
             discardCount++;
             CardList.discard.Add(cardObject);
         }
@@ -155,7 +134,8 @@ public class GameManager : MonoBehaviourPun
                 state[color] += 1;
                 offsetNum = state[color];
             }
-            changedPosition = RoomManager.worldPositions[color] + new Vector3(0f, 0f, -1f - 0.01f * offsetNum);
+            changedPosition = worldPositions[color] + new Vector3(0f, 0f, -1f - 0.01f * offsetNum);
+            CardList.field.Add(cardObject);
         }
 
         cardObject.transform.DOMove(changedPosition, MOVE_SPEED);
@@ -191,7 +171,7 @@ public class GameManager : MonoBehaviourPun
         card.indexInOwner = CardList.seats[ownerId].Count;
 
         Vector3 basePosition = basePositions[ownerId];
-        Vector3 offset = RoomManager.worldPositions["Offset"];
+        Vector3 offset = worldPositions["Offset"];
         Vector3 addPosition = basePosition + offset * card.indexInOwner;
 
         cardObject.transform.DOMove(addPosition, MOVE_SPEED);
@@ -265,14 +245,14 @@ public class GameManager : MonoBehaviourPun
         // ヒントチップの設定
         GameObject hintChipPrefab = Resources.Load<GameObject>("Prefab/HintChip");
         Vector3 basePosition;
-        Vector3 offset = RoomManager.worldPositions["Offset"];
+        Vector3 offset = worldPositions["Offset"];
         if (number == "")
         {
-            basePosition = basePositions[ownerId] + RoomManager.worldPositions["ColorHint"];
+            basePosition = basePositions[ownerId] + worldPositions["ColorHint"];
         }
         else
         {
-            basePosition = basePositions[ownerId] + RoomManager.worldPositions["NumberHint"];
+            basePosition = basePositions[ownerId] + worldPositions["NumberHint"];
         }
 
         // ヒントチップを配置
@@ -335,7 +315,7 @@ public class GameManager : MonoBehaviourPun
     public void SetCardsNewPositon(List<GameObject> cardList, int ownerId)
     {
         Debug.Log($"SetCardsNewPositon called. ownerId:{ownerId}");
-        Vector3 offset = RoomManager.worldPositions["Offset"];
+        Vector3 offset = worldPositions["Offset"];
 
         for (int i = 0; i < cardList.Count; i++)
         {
