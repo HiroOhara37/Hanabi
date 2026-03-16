@@ -80,7 +80,7 @@ public class CardDistributeManager : MonoBehaviourPunCallbacks
         SetHandleAreas();
         int[] seatActive = RoomManager.ParseIntArray(SEAT_ACTIVE, MAX_SEATS, -1);
         List<int> activeSeatIdx = Enumerable.Range(0, seatActive.Length).Where(i => seatActive[i] == 1).ToList();
-        int cardsPerPlayer = (activeSeatIdx.Count == 4) ? 4 : 5;  // 2, 3人は5枚、4人は4枚
+        int cardsPerPlayer = (activeSeatIdx.Count >= 4) ? 4 : 5;  // プレイヤー数：2or3人は5枚、4or5人は4枚
         Debug.Assert(GameManager.basePositions.Count == activeSeatIdx.Count, $"ポジション数:{GameManager.basePositions.Count}とアクティブ座席数:{activeSeatIdx.Count}が不一致です。");
 
         // 各プレイヤー（座席）にカードを配る
