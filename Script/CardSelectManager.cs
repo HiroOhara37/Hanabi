@@ -1,3 +1,5 @@
+using static Config;
+using static Property;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -58,10 +60,18 @@ public class CardSelectManager : MonoBehaviour
                 // 場に出す、捨てるボタンを非活性、ヒントボタンを活性
                 playButton.interactable = false;
                 discardButton.interactable = false;
-                if (GameManager.hintCount > 0)
+                if (hintCount > 0)
                 {
+                    // 虹色と黒色に色のヒントは出せない
+                    if (card.cardColor == "Rainbow" || card.cardColor == "Black")
+                    {
+                        colorHintButton.interactable = false;
+                    }
+                    else
+                    {                    
+                        colorHintButton.interactable = true;
+                    }
                     numberHintButton.interactable = true;
-                    colorHintButton.interactable = true;
                 }
                 else
                 {
