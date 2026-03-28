@@ -79,8 +79,11 @@ public class CardDistributeManager : MonoBehaviourPunCallbacks
         Debug.Log("FirstSetupCards called");
         SetHandleAreas();
         int[] seatActive = RoomManager.ParseIntArray(SEAT_ACTIVE, MAX_SEATS, -1);
+        Debug.Log($"[FirstSetupCards] 取得したSEAT_ACTIVE配列: {string.Join(",", seatActive)}");
         List<int> activeSeatIdx = Enumerable.Range(0, seatActive.Length).Where(i => seatActive[i] == 1).ToList();
+        Debug.Log($"[FirstSetupCards] アクティブシート一覧: {string.Join(",", activeSeatIdx)}");
         int cardsPerPlayer = (activeSeatIdx.Count >= 4) ? 4 : 5;  // プレイヤー数：2or3人は5枚、4or5人は4枚
+        Debug.Log($"[FirstSetupCards] アクティブプレイヤー数: {activeSeatIdx.Count}, 条件判定: activeSeatIdx.Count({activeSeatIdx.Count}) >= 4 ? 4 枚 : 5 枚, 実際の配付: {cardsPerPlayer} 枚");
         Debug.Assert(GameManager.basePositions.Count == activeSeatIdx.Count, $"ポジション数:{GameManager.basePositions.Count}とアクティブ座席数:{activeSeatIdx.Count}が不一致です。");
 
         // 各プレイヤー（座席）にカードを配る

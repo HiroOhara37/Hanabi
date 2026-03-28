@@ -113,6 +113,7 @@ public class RoomManager : MonoBehaviourPunCallbacks
         // プレイヤー順を決定
         var players = PhotonNetwork.PlayerList.OrderBy(_ => UnityEngine.Random.Range(0, 10000)).ToList();
         int playerCount = Mathf.Min(players.Count, MAX_SEATS);
+        Debug.Log($"[StartProcess] 全接続プレイヤー数: {players.Count}, 配置プレイヤー数: {playerCount}");
         int[] seatActors = Enumerable.Repeat(-1, MAX_SEATS).ToArray(); // 初期化: -1 = 空席
         int[] seatActive = Enumerable.Repeat(0, MAX_SEATS).ToArray(); // 初期化: 0 = 無効席
 
@@ -123,6 +124,7 @@ public class RoomManager : MonoBehaviourPunCallbacks
             seatActive[seat] = 1;  // 有効席に設定
             Debug.Log($"Seat {seat} assigned to Player {p.NickName} (Actor: {p.ActorNumber})");
         }
+        Debug.Log($"[StartProcess] SEAT_ACTIVE配列: {string.Join(",", seatActive)}");
 
         inStartButtonProceed = true;
         // ルームプロパティ更新 → OnRoomPropertiesUpdateが呼ばれる
@@ -314,7 +316,9 @@ public class RoomManager : MonoBehaviourPunCallbacks
             !PhotonNetwork.CurrentRoom.CustomProperties.TryGetValue(key, out object obj) ||
             obj == null)
         {
-            return Enumerable.Repeat(defaultValue, expectedLength).ToArray();
+            var defaultArray = Enumerable.Repeat(defaultValue, expectedLength).ToArray();
+            Debug.Log($"[ParseIntArray] ルームプロパティなし。デフォルト配列を返す: {string.Join(",", defaultArray)}");
+            return defaultArray;
         }
 
         var parts = obj.ToString().Split(',');
@@ -326,7 +330,7 @@ public class RoomManager : MonoBehaviourPunCallbacks
             else
                 result[i] = defaultValue;
         }
-        Debug.Log($"ParseIntArray result: {result}");
+        Debug.Log($"[ParseIntArray] 解析済み配列（key={key}）: {string.Join(",", result)}");
         return result;
     }
 }
